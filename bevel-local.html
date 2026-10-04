@@ -219,6 +219,19 @@
   .band .bar i{display:block;height:100%;border-radius:999px}
   .band .p{font-size:16px;font-weight:650;width:44px;text-align:right;font-variant-numeric:tabular-nums}
   .band .t{font-size:15px;color:var(--ink3);width:74px;text-align:right;font-variant-numeric:tabular-nums}
+  .shead{margin:22px 2px 10px}
+  .shead .sdate{font-size:22px;font-weight:700;letter-spacing:-.03em}
+  .shead .eyebrow{margin-top:4px}
+  .sline{margin-top:0}
+  .sdur{text-align:right;font-size:15px;color:var(--ink3);margin:12px 4px 12px}
+  .sdur b{color:var(--ink);font-weight:650;font-size:17px;font-variant-numeric:tabular-nums;margin-left:6px}
+  .sband{display:flex;align-items:center;gap:14px;padding:16px 18px;margin-bottom:10px}
+  .sband .n{width:46px;font-size:16px;font-weight:600}
+  .sband .bar{flex:1;height:10px;border-radius:999px;overflow:hidden}
+  .sband .bar i{display:block;height:100%;border-radius:999px}
+  .sband .p{display:flex;gap:12px;align-items:baseline;font-variant-numeric:tabular-nums;min-width:118px;justify-content:flex-end}
+  .sband .p b{font-size:16px;font-weight:650}
+  .sband .p span{font-size:16px;color:var(--ink3)}
 
   /* clock dial */
   .clock{width:250px;height:250px;margin:14px auto 6px;position:relative}
@@ -251,6 +264,8 @@
   .f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .sfx{position:relative}
   .sfx span{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--ink3);pointer-events:none}
+  .sfx input::-webkit-inner-spin-button,.sfx input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .sfx input{-moz-appearance:textfield;padding-right:44px}
   .lrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--hair)}
   .lrow:last-child{border-bottom:none}
   .lrow .b{flex:1}.lrow .t{font-size:15px;font-weight:550}.lrow .s{font-size:12.5px;color:var(--ink3);margin-top:2px;line-height:1.5}
@@ -460,14 +475,16 @@
         <svg id="bioDial" viewBox="0 0 320 250"></svg>
         <div style="position:absolute;left:0;right:0;top:36%;text-align:center" id="bioMid"></div>
       </div>
+      <div id="bioPace" style="text-align:center;margin:-6px 0 10px"></div>
       <div id="bioNote" style="font-size:12.5px;color:var(--ink3);text-align:center;line-height:1.45;margin:0 16px 8px"></div>
       <button class="btn sec wide" id="bioWhy" style="display:none;margin-top:6px">How this is worked out</button>
     </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px">
-      <div style="font-size:21px;font-weight:700;letter-spacing:-.03em">Blood Tests</div>
+      <div style="font-size:21px;font-weight:700;letter-spacing:-.03em">Healthspan</div>
+      <div style="font-size:13px;color:var(--ink3)">Years each metric adds</div>
     </div>
-    <div id="labList"></div>
+    <div id="hsList"></div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px">
       <div style="font-size:21px;font-weight:700;letter-spacing:-.03em">Other Biomarkers</div>
@@ -526,7 +543,7 @@ var OLD=[{e:"bevelLocal_entries_v2",s:"bevelLocal_settings_v2",c:"bevelLocal_cha
 function ld(k,f){try{var r=localStorage.getItem(k);return r?JSON.parse(r):f;}catch(e){return f;}}
 function sd(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 var DEF={apiKey:"",model:"claude-sonnet-4-5-20250929",customModel:"",weightUnit:"lb",theme:"light",
-  sleepNeedMin:481,stepGoal:10000,birthYear:null,maxHR:194,wakeTarget:"07:00",initials:"ME"};
+  sleepNeedMin:481,sleepGoalMin:450,stepGoal:10000,birthYear:null,maxHR:194,wakeTarget:"07:00",initials:"ME"};
 var S={entries:ld(K.entries,null),settings:Object.assign({},DEF,ld(K.settings,{})||{}),chat:ld(K.chat,[]),tab:"home",
   viewDate:null,calMetric:"recovery",calMonth:null};
 if(S.entries===null){
@@ -546,7 +563,7 @@ function upsert(e){
 }
 var SANE={asleepMin:[0,1200],inBedMin:[0,1440],remMin:[0,600],deepMin:[0,600],weight:[20,1000],
   steps:[0,200000],exerciseMin:[0,1440],hrSleep:[25,150],hrDay:[30,200],hrvSleep:[1,500],respRate:[4,40],
-  restingHR:[20,220],vo2max:[10,90],totalKJ:[0,60000]};
+  restingHR:[20,220],vo2max:[10,90],totalKJ:[0,60000],bodyFat:[2,75]};
 function pnum(raw,f){
   if(raw===undefined||raw===null)return undefined;
   var s=String(raw).trim().replace(/,/g,"");var m=/-?\d+(\.\d+)?/.exec(s);
@@ -747,14 +764,17 @@ function awakeHRs(e){
   for(var k=0;k<96;k++)if(e.hs[k]>0&&!m[k])v.push(e.hs[k]);
   return v;
 }
-// Heart-rate dip: how far your sleeping HR sat below the previous day's waking HR.
+// Heart-rate dip, Bevel's way: your average sleeping HR against your average waking HR that
+// same day, leaving out workouts. Early in the morning there's little waking data yet, so it
+// starts near 0% and settles as the day goes on — Bevel showed 0% at 10 a.m. on Oct 4.
 function hrDip(e){
-  if(!e||!has(e.hrSleep))return null;
-  var v=awakeHRs(entryFor(addDays(e.date,-1)));
-  if(v.length<8)return null;
-  v.sort(function(a,b){return a-b;});
-  var med=v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2;
-  return Math.round((1-e.hrSleep/med)*100);
+  if(!e||!has(e.hrSleep)||!e.hs)return null;
+  var m=sleepMask(e.date),dn0=dnum(e.date),wk=workRuns5(dn0,dn0),v=[];
+  for(var k=0;k<96;k++){if(!(e.hs[k]>0)||m[k])continue;
+    var g=dn0*288+k*3;if(inRuns(g,wk)||inRuns(g+1,wk)||inRuns(g+2,wk))continue;
+    v.push(e.hs[k]);}
+  if(v.length<2)return null;
+  return Math.max(0,Math.round((1-e.hrSleep/mean(v))*100));
 }
 
 /* ---- STRESS: waking heart rate against your resting normal, every 15 minutes ---- */
@@ -771,14 +791,73 @@ function stressDay(e){
     return {avg:mean(v),hi:Math.max.apply(null,v),lo:Math.min.apply(null,v),slots:out,last:lastK,ref:ref,n:v.length};
   });
 }
+/* ---- STRESS, the way Bevel draws it: from the moment you fell asleep until the next night,
+   sleep included, in 5-minute steps. Day stress = the average across that whole window.
+   Fitted to your Bevel days (Aug 13, Sep 3–12) and Oct 4 (Stress 29 · Sleep 28 · Non-activity 32). */
+var SW={a:1.05,b:21,low:30,high:60};
+function slotStressW(hr,ref){return clamp(SW.a*100*(hr/ref-1)+SW.b,0,100);}
+function hr5At(day,slot){   // heart rate in one 5-minute slot: exact 5-minute data, else the 15-minute average
+  var x=entryFor(dstrN(day));if(!x)return 0;
+  if(x.h5&&x.h5[slot]>0)return x.h5[slot];
+  if(x.hs&&x.hs[Math.floor(slot/3)]>0)return x.hs[Math.floor(slot/3)];
+  return 0;
+}
+function sleepRuns5(dayFrom,dayTo){   // every sleep session touching these days, in global 5-minute slots
+  var out=[];
+  for(var d=dayFrom-1;d<=dayTo+1;d++){var x=entryFor(dstrN(d));if(!x||!x.sessions)continue;
+    x.sessions.forEach(function(s){if(!has(s.sw)||!has(s.ew))return;
+      var eday=dnum(x.date)-(s.ew>=1080?1:0),sday=s.sd?dnum(s.sd):eday-(s.sw>s.ew?1:0);
+      out.push([sday*288+Math.floor(s.sw/5),eday*288+Math.floor(s.ew/5)]);});}
+  return out;
+}
+function workRuns5(dayFrom,dayTo){
+  var out=[];
+  for(var d=dayFrom;d<=dayTo;d++){var x=entryFor(dstrN(d));if(!x||!x.workouts)continue;
+    x.workouts.forEach(function(w){if(!has(w.sw))return;var a=d*288+Math.floor(w.sw/5);
+      out.push([a,a+Math.max(1,Math.ceil((w.dur||0)/5))]);});}
+  return out;
+}
+function inRuns(k,runs){for(var i=0;i<runs.length;i++)if(k>=runs[i][0]&&k<runs[i][1])return true;return false;}
+function stressWindow(e){
+  if(!e)return null;
+  return memo("sw|"+e.date,function(){
+    var dn0=dnum(e.date),pri=primaryOf(e),k0,k1;
+    if(pri&&has(pri.sw)&&has(pri.ew)){var eday=dn0-(pri.ew>=1080?1:0),sday=pri.sd?dnum(pri.sd):eday-(pri.sw>pri.ew?1:0);
+      k0=sday*288+Math.floor(pri.sw/5);}
+    else k0=dn0*288;
+    var nx=entryFor(addDays(e.date,1)),p2=nx?primaryOf(nx):null;
+    if(p2&&has(p2.sw)&&has(p2.ew)){var ed2=dn0+1-(p2.ew>=1080?1:0),sd2=p2.sd?dnum(p2.sd):ed2-(p2.sw>p2.ew?1:0);
+      k1=sd2*288+Math.floor(p2.sw/5);}
+    if(!k1||k1<=k0+12||k1-k0>36*12)k1=k0+288;
+    var now=new Date(),kn=dnum(today())*288+Math.floor((now.getHours()*60+now.getMinutes())/5)+1;
+    if(kn<k1)k1=kn;
+    var rb=baseline("hrSleep",e.date),ref=rb?rb.mean:(has(e.hrSleep)?Number(e.hrSleep):null);
+    if(!ref||k1<=k0)return null;
+    var sl=sleepRuns5(Math.floor(k0/288),Math.floor(k1/288)),wk=workRuns5(Math.floor(k0/288),Math.floor(k1/288));
+    var pts=[],all=[],slp=[],non=[],bands=[0,0,0];
+    for(var k=k0;k<k1;k++){
+      var h=hr5At(Math.floor(k/288),k%288);if(!(h>0))continue;
+      var v=slotStressW(h,ref),asl=inRuns(k,sl),act=!asl&&inRuns(k,wk);
+      pts.push({k:k,v:v,sl:asl,act:act});all.push(v);
+      if(asl)slp.push(v);else if(!act)non.push(v);
+      bands[v<SW.low?0:v<SW.high?1:2]++;
+    }
+    if(all.length<6)return null;
+    return {pts:pts,k0:k0,k1:k1,ref:ref,sleepRuns:sl,score:mean(all),sleep:slp.length>=6?mean(slp):null,
+      nonAct:non.length>=3?mean(non):null,hi:Math.max.apply(null,all),lo:Math.min.apply(null,all),
+      bands:bands,n:all.length};
+  });
+}
 function stressScore(e){
-  var d=stressDay(e);if(!d)return null;
-  var dh=has(e.hrDay)?Math.round(e.hrDay):null;
-  var hi=d.hi;if(has(e.hi5))hi=Math.max(hi,slotStress(e.hi5,d.ref));
-  return {value:Math.round(d.avg),hi:Math.round(hi),lo:Math.round(d.lo),d:d,parts:[
+  var w=stressWindow(e);if(!w)return null;
+  var dh=has(e.hrDay)?Math.round(e.hrDay):null,lastK=w.pts[w.pts.length-1].k;
+  return {value:Math.round(w.score),hi:Math.round(w.hi),lo:Math.round(w.lo),w:w,
+    lastMin:((lastK%288)+1)*5,parts:[
     {k:"Average waking heart rate",v:dh!==null?dh+" bpm":"—"},
-    {k:"Your resting normal (60 days)",v:d.ref.toFixed(1)+" bpm"},
-    {k:"Readings used",v:d.n+" × 15 min"}]};
+    {k:"Your resting normal (60 days)",v:w.ref.toFixed(1)+" bpm"},
+    {k:"Sleep stress",v:w.sleep!==null?String(Math.round(w.sleep)):"—"},
+    {k:"Non-activity stress",v:w.nonAct!==null?String(Math.round(w.nonAct)):"—"},
+    {k:"Readings used",v:w.n+" × 5 min"}]};
 }
 function stressWord(v){return v<25?"Low":v<50?"Moderate":v<75?"High":"Very high";}
 
@@ -847,12 +926,12 @@ var EXPLAIN={
     f:"Starts near <b>55%</b> when you're exactly at your normal. Overnight <b>HRV</b> (RMSSD from your heartbeat data, across your main sleep) against your 60-day average moves it most — about 4 points for every 10% above or below. Lower <b>resting heart rate</b> and lower <b>respiratory rate</b> than normal add a little; higher takes a little away."},
   strain:{t:"Strain",s:"Cardiovascular load from time in heart-rate zones. A high number isn't automatically good — load needs recovery.",
     f:"Every minute awake is placed in a zone from your max heart rate ("+"<b>194 bpm</b> unless you change it in Settings). Zone 2 counts 2 points a minute, zone 3 counts 3, zone 4 counts 4, zone 5 counts 5; zone 1 barely counts. The total goes on a <b>logarithmic</b> scale, so each extra point of Strain takes more work than the last. Target Strain comes from your last 14 days of Strain, raised when you're well recovered and lowered when you're not."},
-  stress:{t:"Stress",s:"How far your waking heart rate sat above your resting normal, checked every 15 minutes.",
-    f:"Each 15 minutes awake gets a score from how far heart rate sat above your 60-day resting heart rate — at your resting rate it reads about <b>20</b>, and <b>80% above</b> it reads 100. Average, highest and lowest come from those readings. Apple Health has no stress metric, so this is estimated from heart data."},
+  stress:{t:"Stress",s:"How far your heart rate sat above your resting normal, every 5 minutes from when you fell asleep until the next night — sleep included, like Bevel's chart.",
+    f:"Each 5 minutes gets a score from how far heart rate sat above your 60-day resting heart rate — at your resting rate it reads about <b>21</b>, and <b>75% above</b> it reads 100. <b>Stress Score</b> is the average over the whole window, <b>Sleep Stress</b> the average while asleep, and <b>Non-Activity Stress</b> the average while awake outside workouts. Low is under 30, Med 30–59, High 60 and up. Bevel also reads HRV, which Apple only gives a few times a night, so this works from heart rate alone and lands within about 4 points of your Bevel days."},
   energy:{t:"Energy Bank",s:"A battery for your body. It carries over from yesterday, sleep charges it, and waking hours drain it — faster when you're stressed or training.",
     f:"Each sleep session charges it: about <b>7% an hour</b> of light sleep and <b>15% an hour</b> of Deep or REM sleep, scaled up on mornings you're well recovered and down when you're not. Every waking hour drains about <b>3%</b>, rising to about <b>7.5%</b> when your heart rate says stress is maxed out (hard training counts). It can't go above 100 or below 0."},
-  bioage:{t:"Biological Age",s:"PhenoAge: the age at which an average person has the same mortality risk as your blood results suggest.",
-    f:"This is the published PhenoAge formula (Levine et al., 2018). It combines nine routine blood results — albumin, creatinine, fasting glucose, hs-CRP, lymphocyte %, MCV, RDW, alkaline phosphatase and white blood cell count — with your age at the blood draw. The weights come from how those markers predicted mortality in about 10,000 US adults. The numbers beside each result show how many years it adds or takes off compared with a typical healthy adult's value. It uses the corrected constant 0.09165; some online calculators still use 0.090165, which reads 1–2 years younger. It was built on adults of all ages, so at 20 it's most useful for comparing your own tests over time. It's not a diagnosis."}
+  bioage:{t:"Biological Age",s:"A WHOOP-style biological age: nine everyday metrics from your last 6 months, turned into years older or younger than your actual age.",
+    f:"WHOOP doesn't publish its exact formula, so this rebuilds it from their white paper and the studies it cites. WHOOP Age averages nine metrics over 6 months: hours of sleep, sleep consistency, time in heart-rate zones 1–3 and 4–5, strength training time, daily steps, VO₂ max, resting heart rate and lean body mass. Each one is compared with a target for your age and sex. The mortality risk that gap carries in large published studies becomes years: about 10 years per unit of log hazard ratio, since mortality roughly doubles every 7 years of age. Those years are added to your actual age. Metrics without enough data are left out rather than guessed. Steps, workouts and VO₂ max come from your full Health export, so redo it every 1–2 weeks. It's an estimate, not a diagnosis."}
 };
 /* ======================= APPLE HEALTH IMPORT =======================
    Two passes over export.xml. The first finds your sleep sessions; the second reads heart
@@ -940,13 +1019,13 @@ function scanRecords(file,onRec,onProgress,done,onErr,onHeader){
 }
 
 var IMPORT_KEYS=["sessions","asleepMin","remMin","deepMin","coreMin","primaryAsleepMin","sleepStart","wakeEnd",
-  "sleepStartWall","wakeEndWall","inBedMin","hrvSleep","hrvSDNN","hrSleep","respRate","hrDay","zoneMin","hs","hi5","workouts"];
+  "sleepStartWall","wakeEndWall","inBedMin","hrvSleep","hrvSDNN","hrSleep","respRate","hrDay","zoneMin","hs","hi5","h5","hb","workouts"];
 // What an iPhone Shortcut refresh can rebuild: everything from heart rate, sleep, breathing and HRV,
 // but not workouts, steps or energy, which stay as the last full export left them.
 // hrvSleep isn't in the list: a Shortcut can't read heartbeat data, so an exact value from an export is kept.
 var SYNC_FULL_KEYS=["sessions","asleepMin","remMin","deepMin","coreMin","primaryAsleepMin","sleepStart","wakeEnd",
-  "sleepStartWall","wakeEndWall","inBedMin","hrvSDNN","hrSleep","respRate","hrDay","zoneMin","hs","hi5"];
-var SYNC_HR_KEYS=["hrDay","zoneMin","hs","hi5"];
+  "sleepStartWall","wakeEndWall","inBedMin","hrvSDNN","hrSleep","respRate","hrDay","zoneMin","hs","hi5","h5","hb"];
+var SYNC_HR_KEYS=["hrDay","zoneMin","hs","hi5","h5","hb"];
 
 // Sleep stage from Apple's wording ("HKCategoryValueSleepAnalysisAsleepREM", "REM", "Core", 5 ...)
 function stageOf(v){
@@ -1011,7 +1090,7 @@ function processRaw(raw,opt){
   /* ---- heart rate: zones, 15- and 5-minute slots ---- */
   var per={};
   function P(d){if(!per[d]){per[d]={z:[0,0,0,0,0,0],tw:new Float64Array(96),sw:new Float64Array(96),
-    t5:new Float64Array(288),s5:new Float64Array(288)};}return per[d];}
+    t5:new Float64Array(288),s5:new Float64Array(288),hb:new Float64Array(21)};}return per[d];}
   var hrAll=raw.hr.slice().sort(function(a,b){return a[0]-b[0];});
   // duplicates (same second, two sources) counted once
   var hr=[];for(var i=0;i<hrAll.length;i++){if(hr.length&&hrAll[i][0]-hr[hr.length-1][0]<1000)continue;hr.push(hrAll[i]);}
@@ -1022,7 +1101,9 @@ function processRaw(raw,opt){
     if(ses)ses.hr.push(bpm);
     else{
       var z=0;for(var q=0;q<5;q++)if(bpm>ZT[q])z=q+1;
-      P(dayOfW(w)).z[z]+=Math.min(nx-w,CAP)/60000;
+      var pz=P(dayOfW(w)),dm=Math.min(nx-w,CAP)/60000;pz.z[z]+=dm;
+      // minutes in 5-bpm bands from 100 bpm up, so any zone scheme can be worked out later
+      if(bpm>=100)pz.hb[Math.min(20,Math.floor((bpm-100)/5))]+=dm;
     }
     // spread this reading over the 15-minute slots it covers (held until the next, max 10 min)
     var t0=w,t1=Math.min(nx,w+CAP);
@@ -1090,6 +1171,10 @@ function processRaw(raw,opt){
         if(h>0&&!sessionAt(mid))aw.push(h);
       }
       if(hs.some(function(x){return x>0;}))e.hs=hs;
+      var h5=[];for(var j6=0;j6<288;j6++)h5.push(pd2.s5[j6]>60000?Math.round(pd2.t5[j6]/pd2.s5[j6]):0);
+      if(h5.some(function(x){return x>0;}))e.h5=h5;
+      var hbs=Array.prototype.map.call(pd2.hb,function(x){return r1(x);});
+      if(hbs.some(function(x){return x>0;}))e.hb=hbs;
       var hi5=null;
       for(var j5b=0;j5b<288;j5b++){if(pd2.s5[j5b]<150000)continue;
         if(sessionAt(Math.floor(dnum(d)*DAYMS+(j5b+0.5)*300000)))continue;
@@ -1112,9 +1197,17 @@ function processRaw(raw,opt){
     }
     var keys=IMPORT_KEYS;
     if(opt.full||opt.hrOnly){
-      keys=(opt.full||[]).indexOf(d)>=0?SYNC_FULL_KEYS:SYNC_HR_KEYS;
+      var isFull=(opt.full||[]).indexOf(d)>=0;
+      // Yesterday's sleep is rebuilt too when this window holds the whole night (it began well after
+      // the earliest reading) and it found more sleep than before — e.g. a morning refresh that ran
+      // before the watch had sent the end of the night.
+      if(!isFull&&opt.sleepFrom&&has(e.sleepStart)&&e.sleepStart>=opt.sleepFrom&&has(e.asleepMin)){
+        var prev=S.entries.filter(function(x){return x.date===d;})[0];
+        if(!prev||!has(prev.asleepMin)||e.asleepMin>Number(prev.asleepMin)+1)isFull=true;
+      }
+      keys=isFull?SYNC_FULL_KEYS:SYNC_HR_KEYS;
       var slim={date:d,iv:2};keys.forEach(function(k){slim[k]=e[k];});
-      if((opt.full||[]).indexOf(d)>=0)slim.syncAt=Date.now();
+      if(isFull)slim.syncAt=Date.now();
       e=slim;
     }
     mergeImported(e,keys);written++;
@@ -1251,12 +1344,15 @@ function syncFromPayload(text){
     return {ok:false,msg:t0?"The Shortcut's dates came through as “"+t0.slice(0,24)+"”. Set Date Format to Custom: yyMMddHHmmss.":
       "The Shortcut sent no heart-rate or sleep readings."};}
   // Rebuild today completely. Yesterday's heart-rate numbers are only rebuilt when the readings
-  // reach back to its start; its sleep stays as it was, because that night began before the window.
+  // reach back to its start. Its sleep is rebuilt only if the whole night is inside the window.
   var td=today(),yd=addDays(td,-1),earliest=Infinity;
   raw.hr.forEach(function(x){if(x[0]<earliest)earliest=x[0];});
+  // heart-rate readings are dense, so the first one marks where the Shortcut's window starts
+  // (they're stored as local wall-clock time; sleep start is a real timestamp)
+  var earliestMs=isFinite(earliest)?earliest+new Date(earliest).getTimezoneOffset()*60000:Infinity;
   var full=[td],hrOnly=[];
   if(earliest<=dnum(yd)*86400000+45*60000)hrOnly.push(yd);
-  var r=processRaw(raw,{full:full,hrOnly:hrOnly});
+  var r=processRaw(raw,{full:full,hrOnly:hrOnly,sleepFrom:isFinite(earliestMs)?earliestMs+45*60000:null});
   S.settings.lastSync=Date.now();saveS();
   return {ok:true,hr:raw.hr.length,sleep:raw.stage.length,days:r.written};
 }
@@ -1466,7 +1562,7 @@ function renderHome(){
 
   // stress
   var ss=stressScore(e);
-  $("stressSub").textContent=ss?("Last updated "+todLabel(Math.min(1439,(ss.d.last+1)*15))):"Needs heart data";
+  $("stressSub").textContent=ss?("Last updated "+todLabel(Math.min(1439,ss.lastMin))):"Needs heart data";
   $("stressDot").style.background=ss?(ss.value<25?"var(--ok)":ss.value<50?"var(--warn)":"var(--bad)"):"var(--ink4)";
   var s3=$("stress3");s3.innerHTML="";
   [["Highest",ss?ss.hi:null,"var(--warn)"],["Lowest",ss?ss.lo:null,"var(--recovery)"],
@@ -1580,12 +1676,16 @@ function todLabel(min){
   var ap=h>=12?"PM":"AM",h12=h%12===0?12:h%12;
   return h12+":"+pad2(m)+" "+ap;
 }
+// Bevel's Sleep Bank: your last 7 nights (naps included) against your Sleep Goal, recent nights
+// counting most. Fitted to your Bevel chart Sep 4 – Oct 4: within ~25 min, and 2h 27m on Oct 4.
+function sleepGoal(){var g=Number(S.settings.sleepGoalMin);return g>=180&&g<=720?g:450;}
 function sleepBank(e){
-  var need=S.settings.sleepNeedMin||481;
-  var i=S.entries.indexOf(e);if(i<0)return null;
-  var w=S.entries.slice(Math.max(0,i-13),i+1).filter(function(x){return has(x.asleepMin);});
-  if(!w.length)return null;
-  return Math.round(w.reduce(function(t,x){return t+(x.asleepMin-need);},0));
+  if(!e)return null;
+  var G=sleepGoal(),num=0,n=0;
+  for(var k=0;k<7;k++){var x=entryFor(addDays(e.date,-k));
+    if(x&&has(x.asleepMin)){num+=Math.pow(0.78,k)*(Number(x.asleepMin)-G);n++;}}
+  if(!n||!has(e.asleepMin))return null;
+  return Math.round(0.863*num);
 }
 var M={
   strainScore:{n:"Strain Score",i:"gauge",c:"var(--strain)",better:"none",
@@ -1629,10 +1729,16 @@ var M={
 
   stressScore:{n:"Stress Score",i:"gauge",c:"var(--recovery)",better:"low",
     get:function(e){var s=stressScore(e);return s?s.value:null;},fmt:function(v){return Math.round(v);},u:""},
+  nonActStress:{n:"Non-Activity Stress",i:"gauge",c:"var(--recovery)",better:"low",
+    get:function(e){var w=stressWindow(e);return w&&w.nonAct!==null?w.nonAct:null;},fmt:function(v){return Math.round(v);},u:""},
+  sleepStress:{n:"Sleep Stress",i:"moon",c:"var(--recovery)",better:"low",
+    get:function(e){var w=stressWindow(e);return w&&w.sleep!==null?w.sleep:null;},fmt:function(v){return Math.round(v);},u:""},
   weight:{n:"Weight",i:"scale",c:"var(--strain)",better:"low",
     get:function(e){return has(e.weight)?e.weight:null;},fmt:function(v){return v.toFixed(1);},u:function(){return S.settings.weightUnit;}},
   vo2max:{n:"VO₂ Max",i:"lungs",c:"var(--strain)",better:"high",
-    get:function(e){return has(e.vo2max)?e.vo2max:null;},fmt:function(v){return v.toFixed(1);},u:""}
+    get:function(e){return has(e.vo2max)?e.vo2max:null;},fmt:function(v){return v.toFixed(1);},u:""},
+  bodyFat:{n:"Body Fat",i:"drop",c:"var(--strain)",better:"low",
+    get:function(e){return has(e.bodyFat)?e.bodyFat:null;},fmt:function(v){return v.toFixed(1);},u:"%"}
 };
 function seriesOf(key,days){
   // history up to the day you're viewing, so trends line up with the date picker
@@ -1698,7 +1804,7 @@ var DETAIL={
   sleep:{title:"Sleep",c1:"var(--sleep)",c2:"var(--sleep-lo)",label:"Quality",
     trends:["sleepScore","asleepMin","remMin","deepMin","hrDip","sleepBank","sleepTime","wakeTime"]},
   stress:{title:"Stress",c1:"var(--recovery)",c2:"var(--recovery-lo)",label:"Stress",
-    trends:["stressScore","hrDay","hrvSleep"]},
+    trends:["stressScore","nonActStress","sleepStress"]},
   energy:{title:"Energy Bank",c1:"var(--battery)",c2:"var(--battery-lo)",label:"Charged",
     trends:["recoveryScore","sleepScore","strainScore"]}
 };
@@ -1744,8 +1850,13 @@ function detailCoaching(k,e){
   }
   if(k==="stress"){
     if(!ss)return "Not enough heart data to estimate stress.";
-    return ss.value<25?"Your Stress level is lower than usual. Keep up the great work! Low stress is vital for good Recovery and health functions."
-      :ss.value<50?"Your Stress level is moderate today. Watch for stacking load on top of it."
+    var hist=[];
+    for(var q=1;q<=30;q++){var px=entryFor(addDays(e.date,-q)),pv=px?stressScore(px):null;if(pv)hist.push(pv.value);}
+    var avg=hist.length>=5?mean(hist):null;
+    if(avg!==null&&ss.value<avg-3)return "Your Stress level is lower than usual. Keep up the great work! Low stress is vital for good Recovery and health functions.";
+    if(avg!==null&&ss.value>avg+3)return "Your Stress level is higher than usual. Build in some downtime — a walk, slow breathing or an early night all help.";
+    return ss.value<SW.low?"Your Stress level is low today. Low stress is vital for good Recovery and health functions."
+      :ss.value<SW.high?"Your Stress level is in its usual range today."
       :"Your Stress level is elevated. Prioritise rest and easy activity today.";
   }
   if(k==="energy"){
@@ -1944,38 +2055,72 @@ function zonesBlock(e){
     :"No heart-rate data for this day."));
   return host;
 }
-function stressChart(slots,mask){
-  var W=320,H=92,s=sv("svg",{viewBox:"0 0 "+W+" "+H,class:"schart"});
-  var bw=W/96;
-  [0,6,12,18,24].forEach(function(h){var x=h*4*bw;
-    s.appendChild(sv("line",{x1:x,x2:x,y1:0,y2:H-14,stroke:"var(--hair)","stroke-width":1}));
-    var t=sv("text",{x:x,y:H-2,"text-anchor":h===0?"start":h===24?"end":"middle","font-size":9,fill:"var(--ink3)"});
-    t.textContent=h===0||h===24?"12AM":h===12?"12PM":(h%12)+(h<12?"AM":"PM");s.appendChild(t);});
-  for(var k=0;k<96;k++){
-    var v=slots[k];
-    if(mask&&mask[k]){s.appendChild(sv("rect",{x:k*bw,y:H-17,width:bw,height:3,fill:"var(--sleep-lo)",opacity:.6}));continue;}
-    if(v===null||v===undefined)continue;
-    var h2=Math.max(2,(H-18)*v/100);
-    s.appendChild(sv("rect",{x:k*bw+0.4,y:H-14-h2,width:Math.max(1,bw-0.8),height:h2,rx:1,
-      fill:v<33?"#5AC8B0":v<66?"#F5D34A":"#F0937E"}));
-  }
+// Stress through the night and day, drawn like Bevel: a line coloured by level, the sleep
+// part shaded with the moon above it, 0–100 on the right.
+var STRESS_STOPS=[[0,"#33B88A"],[22,"#7CC95A"],[40,"#D9CB3A"],[60,"#F2A23C"],[80,"#EF6B4A"],[100,"#E5484D"]];
+function stressColor(v){
+  for(var i=1;i<STRESS_STOPS.length;i++)if(v<=STRESS_STOPS[i][0]){
+    var a=STRESS_STOPS[i-1],b=STRESS_STOPS[i],f=(v-a[0])/(b[0]-a[0]);
+    function c(h,j){return parseInt(h.slice(1+2*j,3+2*j),16);}
+    return "rgb("+[0,1,2].map(function(j){return Math.round(c(a[1],j)+(c(b[1],j)-c(a[1],j))*f);}).join(",")+")";}
+  return STRESS_STOPS[STRESS_STOPS.length-1][1];
+}
+function minLabel(min){min=((min%1440)+1440)%1440;var h=Math.floor(min/60),m=min%60;
+  return (h%12===0?12:h%12)+":"+pad2(m)+" "+(h<12?"AM":"PM");}
+function stressLine(w){
+  var W=340,H=236,pl=2,pr=38,pt=34,pb=30,iw=W-pl-pr,ih=H-pt-pb;
+  var s=sv("svg",{viewBox:"0 0 "+W+" "+H,class:"schart sline"});
+  var span=Math.max(288,w.k1-w.k0);   // a full day, or longer when the next sleep came later
+  var X=function(k){return pl+iw*(k-w.k0)/span;},Y=function(v){return pt+ih*(1-v/100);};
+  var gid="sg"+(++gradSeq),defs=sv("defs"),lg=sv("linearGradient",{id:gid,gradientUnits:"userSpaceOnUse",x1:0,y1:Y(0),x2:0,y2:Y(100)});
+  STRESS_STOPS.forEach(function(st){lg.appendChild(sv("stop",{offset:st[0]/100,"stop-color":st[1]}));});
+  defs.appendChild(lg);s.appendChild(defs);
+  // sleep: shaded from top to bottom, a bar along the top, and the moon above it
+  w.sleepRuns.forEach(function(r){
+    var a=Math.max(r[0],w.k0),b=Math.min(r[1],w.k0+span);if(b<=a)return;
+    var x0=X(a),x1=X(b);
+    s.appendChild(sv("rect",{x:x0,y:Y(100),width:x1-x0,height:ih,fill:"var(--sleep)",opacity:.1}));
+    s.appendChild(sv("line",{x1:x0,x2:x1,y1:Y(100),y2:Y(100),stroke:"var(--sleep)","stroke-width":2.6}));
+    if(x1-x0>14){var g=sv("g",{transform:"translate("+((x0+x1)/2-8)+","+(Y(100)-25)+") scale(.68)"});
+      g.innerHTML='<path d="M12.5 3a7.5 7.5 0 1 0 8.5 9.6A6.5 6.5 0 0 1 12.5 3z" fill="var(--sleep)"/><path d="M19.5 2l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="var(--sleep)"/>';
+      s.appendChild(g);}
+  });
+  [0,25,50,75,100].forEach(function(v){
+    s.appendChild(sv("line",{x1:pl,x2:pl+iw,y1:Y(v),y2:Y(v),stroke:"var(--hair)","stroke-width":1,"stroke-dasharray":v===0?"":"3 4"}));
+    var t=sv("text",{x:W-2,y:Y(v)+3.5,"text-anchor":"end","font-size":10,fill:"var(--ink3)"});t.textContent=String(v);s.appendChild(t);});
+  // time labels: when you fell asleep, then about every 6½ hours on the hour
+  var startMin=(w.k0%288)*5,marks=[[w.k0,minLabel(startMin)]];
+  for(var i=1;i<=3;i++){var m=startMin+i*390*span/288,mr=Math.round(m/60)*60;marks.push([w.k0+(mr-startMin)/5,minLabel(mr)]);}
+  marks.forEach(function(mk,i){var x=X(mk[0]);
+    s.appendChild(sv("line",{x1:x,x2:x,y1:Y(0),y2:Y(0)+9,stroke:"var(--hair)","stroke-width":1}));
+    var t=sv("text",{x:x+3,y:H-6,"text-anchor":"start","font-size":10,fill:"var(--ink3)"});t.textContent=mk[1];s.appendChild(t);});
+  // the line, broken where there's no heart data
+  var d="",prev=null;
+  w.pts.forEach(function(p){d+=(prev===null||p.k-prev>3?"M":"L")+X(p.k+0.5).toFixed(1)+","+Y(p.v).toFixed(1);prev=p.k;});
+  s.appendChild(sv("path",{d:d,fill:"none",stroke:"url(#"+gid+")","stroke-width":2.2,"stroke-linejoin":"round","stroke-linecap":"round"}));
+  var lp=w.pts[w.pts.length-1];
+  s.appendChild(sv("circle",{cx:X(lp.k+0.5),cy:Y(lp.v),r:5.5,fill:stressColor(lp.v),stroke:"var(--card)","stroke-width":2.5}));
   return s;
 }
+function hms(min){var t=Math.round(min*60),h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
+  return h+":"+pad2(m)+":"+pad2(sec);}
 function stressBandsCard(e){
-  var host=el("div");
-  var ss=stressScore(e);
-  host.appendChild(Object.assign(el("div","sec"),{textContent:"Stress through the day"}));
+  var host=el("div"),ss=stressScore(e),vds=e?e.date:viewDateStr();
+  var hd=el("div","shead");
+  hd.appendChild(el("div","sdate",pday(vds).toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"})));
+  hd.appendChild(el("div","eyebrow",vds===today()?"TODAY'S STRESS":"DAY'S STRESS"));
+  host.appendChild(hd);
   if(!ss){var c=el("div","card");c.appendChild(el("div","empty","Not enough heart data."));host.appendChild(c);return host;}
-  var c2=el("div","card");c2.appendChild(stressChart(ss.d.slots,sleepMask(e.date)));host.appendChild(c2);
-  var v=ss.d.slots.filter(function(x){return x!==null;}),n=v.length||1;
-  var lowP=Math.round(v.filter(function(x){return x<33;}).length/n*100),
-      highP=Math.round(v.filter(function(x){return x>=66;}).length/n*100),medP=Math.max(0,100-lowP-highP);
-  [["High",highP,"#F0937E"],["Med",medP,"#F5D34A"],["Low",lowP,"#5AC8B0"]].forEach(function(x){
-    var r=el("div","band");
+  var cc=el("div","card");cc.style.padding="12px 10px 8px";cc.appendChild(stressLine(ss.w));host.appendChild(cc);
+  var tot=ss.w.n*5;
+  var du=el("div","sdur");du.appendChild(el("span",null,"Duration: "));du.appendChild(el("b",null,hms(tot)));host.appendChild(du);
+  [["High",2,"#EF7A6A","#FBE3DF"],["Med",1,"#F5D34A","#FCF5D6"],["Low",0,"#6CC3B5","#E4F4F1"]].forEach(function(x){
+    var cnt=ss.w.bands[x[1]],pc=Math.round(cnt/ss.w.n*100);
+    var r=el("div","card sband");
     r.appendChild(el("div","n",x[0]));
-    var bar=el("div","bar");var f=el("i");f.style.width=Math.max(2,x[1])+"%";f.style.background=x[2];
-    bar.appendChild(f);r.appendChild(bar);
-    r.appendChild(el("div","p",x[1]+"%"));
+    var bar=el("div","bar");bar.style.background=x[3];var f=el("i");f.style.width=pc+"%";f.style.background=x[2];bar.appendChild(f);
+    r.appendChild(bar);
+    var p=el("div","p");p.appendChild(el("b",null,pc+"%"));p.appendChild(el("span",null,hms(cnt*5)));r.appendChild(p);
     host.appendChild(r);
   });
   return host;
@@ -2184,68 +2329,223 @@ function openMetric(key){
   });
 }
 
-/* ======================= BIOLOGY: PhenoAge =======================
-   Levine et al. 2018 (Aging) / Liu et al. 2018 (PLOS Medicine): a biological age from nine
-   routine blood markers plus your age, built from how those markers predicted mortality in
-   ~10,000 US adults (NHANES). Your blood results are typed in by you and stay in this browser.
-*/
-var LABS=[
-  {k:"alb",n:"Albumin",panel:"Metabolic panel",units:[["g/dL",10],["g/L",1]],rng:[20,60],ref:43,dp:1},
-  {k:"cre",n:"Creatinine",panel:"Metabolic panel",units:[["mg/dL",88.4],["µmol/L",1]],rng:[20,900],ref:70,dp:2},
-  {k:"glu",n:"Glucose (fasting)",panel:"Metabolic panel",units:[["mg/dL",1/18.016],["mmol/L",1]],rng:[2,30],ref:5.1,dp:0},
-  {k:"alp",n:"Alkaline phosphatase",panel:"Metabolic panel",units:[["U/L",1]],rng:[10,1000],ref:70,dp:0},
-  {k:"crp",n:"C-reactive protein (hs-CRP)",panel:"Separate test",units:[["mg/L",1],["mg/dL",10]],rng:[0.01,300],ref:1.0,dp:1},
-  {k:"wbc",n:"White blood cells",panel:"Blood count (CBC)",units:[["K/µL",1],["×10⁹/L",1]],rng:[1,50],ref:6.5,dp:1},
-  {k:"lym",n:"Lymphocytes",panel:"Blood count (CBC)",units:[["%",1]],rng:[1,90],ref:30,dp:0},
-  {k:"mcv",n:"MCV",panel:"Blood count (CBC)",units:[["fL",1]],rng:[50,130],ref:90,dp:0},
-  {k:"rdw",n:"RDW",panel:"Blood count (CBC)",units:[["%",1]],rng:[8,30],ref:13,dp:1}
-];
-K.labs="bevelLocal_labs_v1";
+/* ======================= BIOLOGY: Biological Age, WHOOP-style =======================
+   WHOOP Age (WHOOP Advanced Labs white paper, 2024) turns nine everyday metrics, averaged over
+   6 months, into years: each metric's mortality hazard ratio from large published studies,
+   at ~10 years per unit of ln(HR) — mortality roughly doubles every 7 years of age.
+   WHOOP doesn't publish its exact curves, so these are rebuilt from the same studies:
+   sleep — Liu 2017, Windred 2024 · activity — Lee 2022, Ahmadi 2022, Momma 2022, Paluch 2022 ·
+   fitness — Kodama 2009, Mandsager 2018, Zhang 2016, Aune 2017, Jayedi 2022.
+   Pace of Aging: your last 30 days against the 6 months — how fast the number would move. */
+K.labs="bevelLocal_labs_v1";            // old blood tests: kept only so backups round-trip
 S.labs=ld(K.labs,[])||[];
 function saveL(){sd(K.labs,S.labs);}
-function labCanon(t,k){var L=LABS.filter(function(x){return x.k===k;})[0],r=t.vals&&t.vals[k];
-  if(!L||!r||!has(r.v))return null;
-  var u=L.units.filter(function(x){return x[0]===r.u;})[0]||L.units[0];return Number(r.v)*u[1];}
 function dobDate(){
   if(S.settings.dob&&/^\d{4}-\d{2}-\d{2}$/.test(S.settings.dob))return pday(S.settings.dob);
   if(S.settings.birthYear)return new Date(Number(S.settings.birthYear),6,1);
   return null;
 }
 function ageOn(dateStr){var b=dobDate();if(!b)return null;return (pday(dateStr)-b)/(365.2425*86400000);}
-function phenoFrom(c,age){
-  var crp=Math.max(0.1,c.crp)/10;   // mg/L → mg/dL, floored at a typical detection limit
-  var xb=-19.9067-0.0336*c.alb+0.0095*c.cre+0.1953*c.glu+0.0954*Math.log(crp)-0.0120*c.lym+
-    0.0268*c.mcv+0.3306*c.rdw+0.00188*c.alp+0.0554*c.wbc+0.0804*age;
-  var g=0.0076927,M=1-Math.exp(-Math.exp(xb)*(Math.exp(120*g)-1)/g);
-  return 141.50225+Math.log(-0.00553*Math.log(1-M))/0.09165;
+function lerpAge(age,a0,v0,a1,v1){var f=clamp((age-a0)/(a1-a0),0,1);return v0+(v1-v0)*f;}
+function sexOf(){var s=String(S.settings.sex||"").toLowerCase();return s==="male"||s==="female"?s:null;}
+function bySex(f,m){var s=sexOf();return s==="female"?f:s==="male"?m:(f+m)/2;}
+
+/* ---- sleep consistency: how much of tonight's sleep falls at the same clock times as each
+   of the 4 nights before (intersection ÷ union of the sleep intervals), as WHOOP describes it */
+function sleepIv(x,shift){
+  if(!x||!x.sessions)return [];
+  var iv=x.sessions.filter(function(s){return has(s.s)&&has(s.e)&&s.e>s.s;})
+    .map(function(s){return [s.s/60000+shift,s.e/60000+shift];}).sort(function(a,b){return a[0]-b[0];});
+  var out=[];iv.forEach(function(r){if(out.length&&r[0]<=out[out.length-1][1])out[out.length-1][1]=Math.max(out[out.length-1][1],r[1]);else out.push(r.slice());});
+  return out;
 }
-function phenoAge(t){
-  if(!t)return null;
-  var c={},missing=[];
-  LABS.forEach(function(L){var v=labCanon(t,L.k);if(v===null||!isFinite(v))missing.push(L.n);else c[L.k]=v;});
-  var age=ageOn(t.date);
-  if(missing.length||age===null)return {missing:missing,needsAge:age===null};
-  var v=phenoFrom(c,age);
-  // how much each result moves it, against a typical healthy adult's value
-  var parts=LABS.map(function(L){var c2=Object.assign({},c);c2[L.k]=L.ref;
-    return {k:L.n,years:v-phenoFrom(c2,age),val:t.vals[L.k]};});
-  parts.sort(function(a,b){return Math.abs(b.years)-Math.abs(a.years);});
-  return {value:v,age:age,parts:parts,date:t.date};
+function ivLen(a){var t=0;a.forEach(function(r){t+=r[1]-r[0];});return t;}
+function ivInter(A,B){var i=0,j=0,t=0;
+  while(i<A.length&&j<B.length){var a=Math.max(A[i][0],B[j][0]),b=Math.min(A[i][1],B[j][1]);if(b>a)t+=b-a;
+    if(A[i][1]<B[j][1])i++;else j++;}
+  return t;}
+function sleepConsistencyDay(date){
+  return memo("sc|"+date,function(){
+    var A=sleepIv(entryFor(date),0);if(!A.length)return null;
+    var v=[];
+    for(var k=1;k<=4;k++){var B=sleepIv(entryFor(addDays(date,-k)),k*1440);if(!B.length)continue;
+      var I=ivInter(A,B),U=ivLen(A)+ivLen(B)-I;if(U>0)v.push(I/U);}
+    return v.length>=2?100*mean(v):null;
+  });
 }
-function latestLab(){
-  var done=S.labs.filter(function(t){var p=phenoAge(t);return p&&has(p.value);});
-  done.sort(function(a,b){return a.date<b.date?1:-1;});
-  return done[0]||null;
+/* ---- resting heart rate the way WHOOP takes it: low and steady during sleep, not a daytime
+   reading. Here: the 10th percentile of your 5-minute heart rate across the main sleep. */
+function nightLow(e){
+  if(!e)return null;
+  return memo("nl|"+e.date,function(){
+    var p=primaryOf(e);if(!p||!has(p.sw)||!has(p.ew))return null;
+    var dn0=dnum(e.date),eday=dn0-(p.ew>=1080?1:0),sday=p.sd?dnum(p.sd):eday-(p.sw>p.ew?1:0);
+    var a=sday*288+Math.floor(p.sw/5),b=eday*288+Math.floor(p.ew/5),v=[];
+    for(var k=a;k<=b&&k-a<200;k++){var h=hr5At(Math.floor(k/288),k%288);if(h>0)v.push(h);}
+    if(v.length<24)return null;
+    v.sort(function(x,y){return x-y;});return v[Math.floor(v.length*0.1)];
+  });
 }
-function labFreshness(dateStr){
-  var mo=(Date.now()-pday(dateStr).getTime())/(30.44*86400000);
-  return mo<=3?{w:"Up to date",c:"var(--ok)"}:mo<=12?{w:"Refresh suggested",c:"var(--warn)"}:{w:"Out of date",c:"var(--bad)"};
+/* ---- awake minutes above a heart rate: from the 5-bpm bands when the day has them,
+   otherwise from the %max-HR zones (split evenly inside a zone) */
+function minAbove(e,bpm){
+  var t=0,i,lo,hi,m;
+  if(e.hb&&bpm>=100){
+    for(i=0;i<21;i++){m=e.hb[i]||0;if(!m)continue;lo=100+5*i;hi=i===20?240:lo+5;
+      if(bpm<=lo)t+=m;else if(bpm<hi)t+=m*(hi-bpm)/(hi-lo);}
+    return t;
+  }
+  if(!e.zoneMin)return 0;
+  var mx=Number(S.settings.maxHRAtImport)||maxHR(),ed=[0,0.5*mx,0.6*mx,0.7*mx,0.8*mx,0.9*mx,mx+15];
+  for(i=1;i<6;i++){m=e.zoneMin[i]||0;if(!m)continue;lo=ed[i];hi=ed[i+1];
+    if(bpm<=lo)t+=m;else if(bpm<hi)t+=m*(hi-bpm)/(hi-lo);}
+  return t;
 }
+function latestWithin(field,end,days){
+  var i=lowerIdx(addDays(end,1))-1,from=addDays(end,-days);
+  for(;i>=0&&S.entries[i].date>from;i--){var x=S.entries[i][field];if(has(x))return {v:Number(x),date:S.entries[i].date};}
+  return null;
+}
+var STRENGTH_RE=/Strength|CoreTraining/;
+function isStrength(w){return w&&STRENGTH_RE.test(String(w.type||""))&&(w.dur||0)>=5;}
+// the day before your newest steps reading = the last day your full export covers
+function exportThrough(){
+  for(var i=S.entries.length-1;i>=0;i--)if(has(S.entries[i].steps))return S.entries[i].date;
+  return null;
+}
+
+/* ---- the nine metrics over a window ending on `end` (a day string), `days` long ---- */
+function healthspanMetrics(end,days){
+  return memo("hsm|"+end+"|"+days,function(){
+    var dEnd=dnum(end),dToday=dnum(today()),need=days>=90?1:0.5;
+    var sl=[],sc=[],st=[],vo=[],rh=[],cov=0,strMin=0,hrDays=[];
+    for(var d=dEnd-days+1;d<=dEnd;d++){
+      var ds=dstrN(d),e=entryFor(ds),c=sleepConsistencyDay(ds);if(c!==null)sc.push(c);
+      if(!e)continue;
+      if(has(e.asleepMin)&&e.asleepMin>=60)sl.push(Number(e.asleepMin));
+      var nl=nightLow(e);if(nl!==null)rh.push(nl);
+      if(has(e.vo2max))vo.push(Number(e.vo2max));
+      if(d>=dToday)continue;                                  // today isn't over yet
+      if(has(e.steps)){cov++;if(e.steps>=500)st.push(Number(e.steps));
+        (e.workouts||[]).forEach(function(w){if(isStrength(w))strMin+=w.dur;});}
+      if(e.hb||e.zoneMin)hrDays.push(e);
+    }
+    var rhr=rh.length>=Math.round(10*need)?mean(rh):null;
+    var r0=rhr||65,mx=maxHR(),L1=r0+0.4*(mx-r0),L4=r0+0.8*(mx-r0),z13=0,z45=0;
+    hrDays.forEach(function(e){var a1=minAbove(e,L1),a4=minAbove(e,L4);z13+=Math.max(0,a1-a4);z45+=a4;});
+    var out={end:end,days:days,L1:L1,L4:L4,mx:mx,r0:r0};
+    function put(k,v,n,ok){out[k]=ok?{v:v,n:n}:null;}
+    put("sleepH",mean(sl)/60,sl.length,sl.length>=Math.round(14*need));
+    put("sleepC",mean(sc),sc.length,sc.length>=Math.round(10*need));
+    put("z13",z13/hrDays.length*7,hrDays.length,hrDays.length>=Math.round(14*need));
+    put("z45",z45/hrDays.length*7,hrDays.length,hrDays.length>=Math.round(14*need));
+    put("str",strMin/cov*7,cov,cov>=Math.round(14*need));
+    put("steps",mean(st),st.length,st.length>=Math.round(14*need));
+    if(vo.length)put("vo2",mean(vo),vo.length,true);
+    else{var lv=latestWithin("vo2max",end,365);put("vo2",lv&&lv.v,1,!!lv&&days>=90);}
+    var bf=latestWithin("bodyFat",end,days>=90?365:days);
+    put("lean",bf&&100-bf.v,1,!!bf);if(bf)out.lean.date=bf.date;
+    put("rhr",rhr,rh.length,rhr!==null);
+    return out;
+  });
+}
+
+/* ---- the curves: a value and a target → years (10 × ln hazard ratio × weight, capped) ---- */
+function vo2Target(age){var f=[[20,40],[30,38],[40,35],[50,32],[60,29],[70,26],[80,23]],
+  m=[[20,48],[30,45],[40,42],[50,38],[60,35],[70,31],[80,28]];
+  function t(tab){if(age<=tab[0][0])return tab[0][1];for(var i=1;i<tab.length;i++)if(age<=tab[i][0])
+    return lerpAge(age,tab[i-1][0],tab[i-1][1],tab[i][0],tab[i][1]);return tab[tab.length-1][1];}
+  return bySex(t(f),t(m));}
+function capY(y,lo,hi){return clamp(y,lo,hi);}
+var HSM=[
+  {k:"sleepH",g:"Sleep",n:"Hours of Sleep",i:"bed",
+    s:"Your average time asleep per night, naps included.",
+    tgt:function(){return 7;},tgtTxt:function(){return "7–9h";},
+    fmt:function(v){return hm(v*60);},
+    yrs:function(v){var l=v<7?0.06*(7-v):v>9?0.05*(v-9):0;return capY(10*l,0,3);},
+    how:"Each hour under 7 adds about 0.6 years and 7–9 hours adds nothing. Over 9 hours adds a little, since long sleep also tracks with higher mortality. Capped at +3 years. Source: Liu et al., 2017, a meta-analysis of sleep length and mortality.",
+    tip:"Going to bed 30 minutes earlier on work nights is usually the easiest win."},
+  {k:"sleepC",g:"Sleep",n:"Sleep Consistency",i:"moon",
+    s:"How closely each night's sleep and wake times match the 4 nights before it, from 0 to 100%.",
+    tgt:function(){return 70;},tgtTxt:function(){return "70%+";},
+    fmt:function(v){return Math.round(v)+"%";},
+    yrs:function(v){return capY(v<70?0.09*(70-v):-0.04*(v-70),-1,3);},
+    how:"For each night, the overlap with the same clock times on each of the 4 nights before, divided by the combined time asleep. Each point under 70% adds 0.09 years, up to 3. Each point over 70% takes off 0.04 years, up to 1. Source: Windred et al., 2024 (UK Biobank), where regular sleep timing predicted mortality better than sleep length.",
+    tip:"Keep your wake-up time within about 30 minutes every day, weekends included."},
+  {k:"z13",g:"Strain",n:"Time in HR Zones 1–3",i:"heart",
+    s:"Weekly minutes at light-to-moderate effort: 40–80% of your heart-rate reserve.",
+    tgt:function(a){return lerpAge(a,20,100,70,70);},tgtTxt:function(a){return Math.round(lerpAge(a,20,100,70,70))+"+ min/wk";},
+    fmt:function(v){return fmtWk(v);},
+    yrs:function(v,T){return 7*(v<T?0.22*(1-v/T):-0.08*Math.min(1,(v-T)/(2*T)));},
+    how:"Heart-rate reserve is your max heart rate minus your resting heart rate, which is how WHOOP sets its zones. Zones 1–3 are 40–80% of it. Doing none adds about 1.5 years. Beyond the target, up to 0.6 years come off. Sources: Lee et al., 2022 and Ahmadi et al., 2022.",
+    tip:"Brisk walks count. Three 35-minute walks a week covers it."},
+  {k:"z45",g:"Strain",n:"Time in HR Zones 4–5",i:"bolt",
+    s:"Weekly minutes of hard effort: above 80% of your heart-rate reserve.",
+    tgt:function(a){return lerpAge(a,20,10,70,7);},tgtTxt:function(a){return Math.round(lerpAge(a,20,10,70,7))+"+ min/wk";},
+    fmt:function(v){return fmtWk(v);},
+    yrs:function(v,T){return 7*(v<T?0.16*(1-v/T):-0.25*Math.min(1,(v-T)/45));},
+    how:"Vigorous minutes carry roughly twice the benefit of moderate ones. Doing none adds about 1.1 years. Up to 1.75 years come off once you're 45 minutes a week past the target. Sources: Lee et al., 2022 and Ahmadi et al., 2022.",
+    tip:"A few short intervals (hills, stairs, a fast finish) add these minutes quickly."},
+  {k:"str",g:"Strain",n:"Strength Activity Time",i:"dumbbell",
+    s:"Weekly minutes of strength or core workouts recorded on your watch.",
+    tgt:function(){return 40;},tgtTxt:function(){return "40+ min/wk";},
+    fmt:function(v){return fmtWk(v);},
+    yrs:function(v){return 10*0.186*Math.pow(1-Math.min(v,40)/40,1.5);},
+    how:"Mortality is lowest at about 40 minutes of muscle-strengthening work a week, about 17% lower than doing none. None adds about 1.9 years. Most of the gain comes from the first sessions. Workouts under 5 minutes aren't counted. Source: Momma et al., 2022.",
+    tip:"Two 20-minute strength sessions a week reach the target. Start the Strength workout on your watch so it's counted."},
+  {k:"steps",g:"Strain",n:"Daily Steps",i:"steps",
+    s:"Your average steps per day on days you wore your watch.",
+    tgt:function(a){return lerpAge(a,20,8000,70,5600);},tgtTxt:function(a){return (Math.round(lerpAge(a,20,8000,70,5600)/100)*100).toLocaleString()+"+/day";},
+    fmt:function(v){return Math.round(v).toLocaleString()+"/day";},
+    yrs:function(v,T){return 6*(v<T?0.6*Math.log(T/Math.max(v,2000)):-0.4*Math.log(Math.min(v,12000)/T));},
+    how:"Mortality falls steeply up to about 8,000 steps a day for adults under 60, then levels off. Each 10% under target adds about 0.4 years. Above it, up to 1 year comes off, reached at 12,000 steps. Source: Paluch et al., 2022 (15 cohorts).",
+    tip:"A 20-minute walk is about 2,000 steps."},
+  {k:"vo2",g:"Fitness",n:"VO₂ Max",i:"lungs",
+    s:"Your cardio fitness, from Apple Watch's estimates during outdoor walks and runs.",
+    tgt:function(a){return vo2Target(a);},tgtTxt:function(a){return Math.round(vo2Target(a))+"+";},
+    fmt:function(v){return v.toFixed(1)+" ml/kg/min";},
+    yrs:function(v,T){return capY(10*0.0398*(T-v),-8,8);},
+    how:"Each 1 ml/kg/min below the target for your age and sex adds about 0.4 years, from 13% higher mortality per MET (3.5 ml/kg/min). Above the target, years come off at the same rate. Capped at ±8 years. Sources: Kodama et al., 2009 and Mandsager et al., 2018. Targets are around the 60th percentile of the FRIEND registry.",
+    tip:"VO₂ max responds best to 2–3 hard interval sessions a week. Outdoor walks with your watch also give it fresh readings."},
+  {k:"rhr",g:"Fitness",n:"Resting Heart Rate",i:"heart",
+    s:"Your overnight low heart rate: the 10th percentile of your heart rate across your main sleep.",
+    tgt:function(){return bySex(64,60);},tgtTxt:function(){return "under "+Math.round(bySex(64,60));},
+    fmt:function(v){return Math.round(v)+" bpm";},
+    yrs:function(v,T){return capY(10*0.8*0.012*(v-T),-3,3);},
+    how:"Each beat above the target adds about 0.1 years, and each beat below it takes off the same, capped at ±3 years. Sources: Zhang et al., 2016 and Aune et al., 2017 (about 9–17% higher mortality per 10 bpm). WHOOP measures it during sleep, so it isn't the same as Apple Health's daytime resting heart rate.",
+    tip:"Aerobic fitness, less alcohol, and not eating or training hard late all bring it down."},
+  {k:"lean",g:"Fitness",n:"Lean Body Mass",i:"drop",
+    s:"100 minus your body fat %, from your latest reading in the last 12 months.",
+    tgt:function(){return bySex(67,80);},tgtTxt:function(){return Math.round(bySex(67,80))+"%+";},
+    fmt:function(v){return v.toFixed(1)+"%";},
+    yrs:function(v,T){return capY(10*0.015*(T-Math.min(v,T+8)),-2,2);},
+    how:"Each 1% below the target adds about 0.15 years. Above it, years come off up to 8% past the target. Capped at ±2 years. Sources: Jayedi et al., 2022 and Padwal et al., 2016 (body fat and mortality).",
+    tip:"Add a reading from a smart scale, gym scan or DEXA with the + button."}
+];
+function fmtWk(v){return v>=60?hm(v)+"/wk":Math.round(v)+" min/wk";}
+
+function whoopAge(end){
+  end=end||viewDateStr();
+  return memo("wa|"+end,function(){
+    var age=ageOn(end);if(age===null)return {needsAge:true};
+    var a=healthspanMetrics(end,182),b=healthspanMetrics(end,30),d6=0,d30=0,n=0;
+    var rows=HSM.map(function(m){
+      var T=m.tgt(age),x=a[m.k],y=b[m.k]||x,r={m:m,T:T,x:x,y30:y};
+      if(x){r.years=m.yrs(x.v,T);r.years30=m.yrs(y.v,T);d6+=r.years;d30+=r.years30;n++;}
+      return r;});
+    if(n<4)return {notEnough:true,age:age,rows:rows,n:n};
+    return {value:age+d6,age:age,delta:d6,delta30:d30,pace:clamp(1+2*(d30-d6),-1,3),rows:rows,n:n,end:end,win:a};
+  });
+}
+function paceWord(p){return p<0.9?"slower than normal":p>1.1?"faster than normal":"about normal";}
+function paceColor(p){return p<0.9?"var(--recovery)":p>1.1?"var(--warn)":"var(--ink2)";}
+function yrsText(y){return Math.abs(y)<0.05?"±0.0 yrs":(y>0?"+":"−")+Math.abs(y).toFixed(1)+" yrs";}
+function yrsColor(y){return y>0.05?"var(--warn)":y<-0.05?"var(--recovery)":"var(--ink3)";}
 
 function renderBio(){
   var svgEl2=$("bioDial"),mid=$("bioMid"),why=$("bioWhy");
-  svgEl2.innerHTML="";mid.innerHTML="";why.style.display="none";$("bioNote").textContent="";
-  var t=latestLab(),b=t?phenoAge(t):null;
+  svgEl2.innerHTML="";mid.innerHTML="";why.style.display="none";$("bioNote").textContent="";$("bioPace").innerHTML="";
+  var b=whoopAge();
   var cx=160,cy=118,r=100,A0=200,A1=-20;
   function pt(d,rr){var a=d*Math.PI/180;return [cx+rr*Math.cos(a),cy+rr*Math.sin(a)];}
   function arc(f,t2,rr){var p0=pt(f,rr),p1=pt(t2,rr);
@@ -2254,129 +2554,143 @@ function renderBio(){
   for(var i=0;i<=50;i++){var dg=A0-(A0-A1)*i/50,o=pt(dg,r+11),ii=pt(dg,r+(i%5===0?18:15));
     svgEl2.appendChild(sv("line",{x1:o[0],y1:o[1],x2:ii[0],y2:ii[1],stroke:"var(--track)",
       "stroke-width":i%5===0?2:1.2,"stroke-linecap":"round"}));}
-  renderLabList();
-  if(!b){
-    $("bioAsOf").textContent="From a routine blood test";
+  renderHealthspan(b);
+  if(!b||b.needsAge||b.notEnough){
+    $("bioAsOf").textContent="From your last 6 months";
     var box=el("div");box.style.cssText="max-width:230px;margin:0 auto";
     var tx=el("div");tx.style.cssText="font-size:13px;color:var(--ink3);line-height:1.45;margin-bottom:10px";
-    tx.textContent=dobDate()?"Add 9 results from a blood test to see your PhenoAge.":"Import your Health export or add your date of birth, then add a blood test.";
-    var lk=el("button","btn sec sm",dobDate()?"Add blood test":"Add date of birth");
-    lk.addEventListener("click",function(){if(dobDate())openLabForm(null);else openSettings();});
-    box.appendChild(tx);box.appendChild(lk);mid.appendChild(box);return;
+    tx.textContent=b&&b.needsAge?"Add your date of birth to see your Biological Age."
+      :"Needs at least 4 of the 9 metrics. Import your Apple Health export from the menu.";
+    mid.appendChild(tx);
+    if(b&&b.needsAge){var lk=el("button","btn sec sm","Add date of birth");lk.addEventListener("click",openSettings);mid.appendChild(lk);}
+    return;
   }
-  var fr=labFreshness(b.date);
-  $("bioAsOf").innerHTML="";
-  $("bioAsOf").appendChild(document.createTextNode("PhenoAge · blood test "+ldate(b.date)+" · "));
-  var fw=el("span",null,fr.w);fw.style.color=fr.c;fw.style.fontWeight="600";$("bioAsOf").appendChild(fw);
+  $("bioAsOf").textContent="WHOOP-style · last 6 months to "+sdate(b.end);
   var lo=Math.max(0,Math.floor(Math.min(b.age-10,b.value-3))),hi=Math.ceil(Math.max(b.age+15,b.value+3)),
-      frc=clamp((b.value-lo)/(hi-lo),0.02,1),mk=A0-(A0-A1)*frc;
-  var good=b.value<=b.age;
-  svgEl2.appendChild(sv("path",{d:arc(A0,mk,r),fill:"none",
-    stroke:good?"var(--recovery)":"var(--strain)","stroke-width":15,"stroke-linecap":"round"}));
+      frc=clamp((b.value-lo)/(hi-lo),0.02,1),mk=A0-(A0-A1)*frc,ak=A0-(A0-A1)*clamp((b.age-lo)/(hi-lo),0,1);
+  var good=b.value<=b.age,col=good?"var(--recovery)":"var(--strain)";
+  svgEl2.appendChild(sv("path",{d:arc(A0,mk,r),fill:"none",stroke:col,"stroke-width":15,"stroke-linecap":"round"}));
+  // a notch where your actual age sits
+  var n0=pt(ak,r-12),n1=pt(ak,r+12);
+  svgEl2.appendChild(sv("line",{x1:n0[0],y1:n0[1],x2:n1[0],y2:n1[1],stroke:"var(--ink3)","stroke-width":2.2,"stroke-linecap":"round"}));
   var mp=pt(mk,r);
   svgEl2.appendChild(sv("circle",{cx:mp[0],cy:mp[1],r:9,fill:"var(--card)"}));
-  svgEl2.appendChild(sv("circle",{cx:mp[0],cy:mp[1],r:5.5,fill:good?"var(--recovery)":"var(--strain)"}));
+  svgEl2.appendChild(sv("circle",{cx:mp[0],cy:mp[1],r:5.5,fill:col}));
   [[A0,lo],[A1,hi]].forEach(function(x){
     var lp=pt(x[0],r+30),t2=sv("text",{x:lp[0],y:lp[1],"text-anchor":"middle","font-size":12.5,
       fill:"var(--ink3)","font-weight":600});t2.textContent=String(Math.round(x[1]));svgEl2.appendChild(t2);});
   var fig=el("div");fig.style.cssText="font-size:46px;font-weight:700;letter-spacing:-.045em;line-height:1";
   fig.textContent=b.value.toFixed(1);
   var cap=el("div");cap.style.cssText="font-size:12.5px;color:var(--ink3);margin:6px auto 0;max-width:58%;line-height:1.4";
-  var dlt=b.value-b.age;
-  cap.textContent=Math.abs(dlt)<0.05?"right at your age ("+b.age.toFixed(1)+")":
-    Math.abs(dlt).toFixed(1)+" years "+(dlt<0?"younger":"older")+" than your age at the test ("+b.age.toFixed(1)+")";
+  cap.textContent=Math.abs(b.delta)<0.05?"right at your age ("+b.age.toFixed(1)+")":
+    Math.abs(b.delta).toFixed(1)+" years "+(b.delta<0?"younger":"older")+" than your age ("+b.age.toFixed(1)+")";
   mid.appendChild(fig);mid.appendChild(cap);
-  if(b.age<30)$("bioNote").textContent="PhenoAge reads low for people in their 20s, so compare your own tests over time rather than with your age.";
+  // Pace of Aging chip
+  var pc=el("button","chip");pc.type="button";pc.style.cssText="margin:0 auto;display:inline-flex;gap:6px;align-items:center;font-size:14px;font-family:inherit;cursor:pointer";
+  var pv=el("b",null,b.pace.toFixed(1)+"x");pv.style.color=paceColor(b.pace);
+  pc.appendChild(document.createTextNode("Pace of Aging "));pc.appendChild(pv);
+  pc.addEventListener("click",openPaceSheet);$("bioPace").appendChild(pc);
+  var thru=exportThrough();
+  $("bioNote").textContent=(b.n<9?"Based on "+b.n+" of 9 metrics. ":"")+
+    (thru?"Steps, workouts and VO₂ max are from your full export (through "+sdate(thru)+")."
+      :"Steps, workouts and VO₂ max come from your full Health export.");
   why.style.display="block";
   why.onclick=function(){openSheet(function(h){
-    sheetTitle(h,"PhenoAge · "+b.value.toFixed(1),EXPLAIN.bioage.s);
-    h.appendChild(Object.assign(el("div","stept"),{textContent:"What moved it (vs a typical healthy adult)"}));
+    sheetTitle(h,"Biological Age · "+b.value.toFixed(1),EXPLAIN.bioage.s);
+    // how it's moved: every 2 weeks over the last 6 months
+    var pts=[];for(var k=12;k>=0;k--){var d=addDays(b.end,-14*k),w=whoopAge(d);if(w&&has(w.value))pts.push({date:d,v:w.value});}
+    if(pts.length>=3){
+      h.appendChild(Object.assign(el("div","stept"),{textContent:"Last 6 months"}));
+      var tc=el("div","card");tc.style.padding="10px 12px";
+      var sp=sparkline(pts,good?"var(--recovery)":"var(--strain)",320,90,false);sp.style.cssText="width:100%;height:90px;display:block";
+      tc.appendChild(sp);
+      var lab=el("div");lab.style.cssText="display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-top:4px";
+      lab.appendChild(el("span",null,sdate(pts[0].date)+" · "+pts[0].v.toFixed(1)));
+      lab.appendChild(el("span",null,sdate(pts[pts.length-1].date)+" · "+pts[pts.length-1].v.toFixed(1)));
+      tc.appendChild(lab);h.appendChild(tc);
+    }
+    h.appendChild(Object.assign(el("div","stept"),{textContent:"What's moving it"}));
     var kv=el("div","kv");
-    b.parts.forEach(function(p){var r2=el("div","r");
-      r2.appendChild(el("div","k",p.k+" · "+p.val.v+" "+p.val.u));
-      var y=el("div","v",(Math.abs(p.years)<0.05?"±0.0":(p.years>0?"+":"−")+Math.abs(p.years).toFixed(1))+" yr");
-      y.style.color=p.years>0.05?"var(--warn)":p.years<-0.05?"var(--recovery)":"var(--ink3)";
+    b.rows.slice().sort(function(x,y){return Math.abs(y.years||0)-Math.abs(x.years||0);}).forEach(function(rw){
+      var r2=el("div","r");r2.appendChild(el("div","k",rw.m.n));
+      var y=el("div","v",rw.x?yrsText(rw.years):"no data");y.style.color=rw.x?yrsColor(rw.years):"var(--ink4)";
       r2.appendChild(y);kv.appendChild(r2);});
+    var tot=el("div","r");tot.appendChild(el("div","k","Total, added to your age "+b.age.toFixed(1)));
+    var tv=el("div","v",yrsText(b.delta));tv.style.color=yrsColor(b.delta);tot.appendChild(tv);kv.appendChild(tot);
     h.appendChild(kv);
     var f=el("div","fml");f.innerHTML="<b>How it's worked out.</b> "+EXPLAIN.bioage.f;h.appendChild(f);
     closeBtn(h);});};
 }
-function renderLabList(){
-  var host=$("labList");if(!host)return;host.innerHTML="";
-  var c=el("div","card");c.style.padding="4px 15px";
-  var list=S.labs.slice().sort(function(a,b){return a.date<b.date?1:-1;});
-  list.forEach(function(t){
-    var p=phenoAge(t),r=el("div","lrow");r.style.cursor="pointer";
-    var bd=el("div","b");bd.appendChild(el("div","t","Blood test · "+ldate(t.date)));
-    bd.appendChild(el("div","s",p&&has(p.value)?"PhenoAge "+p.value.toFixed(1)+" at age "+p.age.toFixed(1)
-      :p&&p.missing&&p.missing.length?"Missing: "+p.missing.join(", "):"Needs your date of birth"));
-    r.appendChild(bd);
-    var ar=sv("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2.4",
-      "stroke-linecap":"round","stroke-linejoin":"round",class:"arrow"});ar.appendChild(sv("path",{d:"M9 6l6 6-6 6"}));
-    r.appendChild(ar);
-    r.addEventListener("click",function(){openLabForm(t);});
-    c.appendChild(r);
-  });
-  var add=el("button","btn sec wide",list.length?"Add another blood test":"Add blood test results");
-  add.style.margin="10px 0";add.addEventListener("click",function(){openLabForm(null);});
-  c.appendChild(add);host.appendChild(c);
-}
-function openLabForm(t){
-  var editing=!!t;
-  t=t||{id:"l"+Date.now().toString(36),date:today(),vals:{}};
+function openPaceSheet(){
+  var b=whoopAge();if(!b||!has(b.pace))return;
   openSheet(function(h){
-    sheetTitle(h,editing?"Edit blood test":"Add blood test","Type the results from your lab report. They're usually in three sections: a metabolic panel (CMP), a blood count with differential (CBC), and hs-CRP, which is often a separate test.");
-    var c=el("div","card");
-    var df=el("div","fld");df.appendChild(el("label",null,"Date of the blood draw"));
-    var di=el("input");di.type="date";di.value=t.date;di.max=today();df.appendChild(di);c.appendChild(df);
-    var inputs={};
-    var lastPanel=null;
-    LABS.forEach(function(L){
-      if(L.panel!==lastPanel){var ph=el("div","stept",L.panel);ph.style.margin="10px 0 8px";c.appendChild(ph);lastPanel=L.panel;}
-      var f=el("div","fld");f.appendChild(el("label",null,L.n));
-      var row=el("div");row.style.cssText="display:flex;gap:8px";
-      var inp=el("input");inp.type="number";inp.step="any";inp.inputMode="decimal";inp.style.flex="1";
-      var cur=t.vals[L.k];inp.value=cur&&has(cur.v)?cur.v:"";
-      var sel=el("select");sel.style.cssText="width:auto;flex:0 0 auto";
-      L.units.forEach(function(u){var o=el("option",null,u[0]);o.value=u[0];sel.appendChild(o);});
-      sel.value=cur&&cur.u?cur.u:L.units[0][0];
-      if(L.units.length===1)sel.disabled=true;
-      row.appendChild(inp);row.appendChild(sel);f.appendChild(row);
-      var warn=el("div","hint");f.appendChild(warn);
-      inputs[L.k]={inp:inp,sel:sel,warn:warn,L:L};
-      c.appendChild(f);
-    });
-    var st=el("div");c.appendChild(st);
-    var sv2=el("button","btn wide","Save");
-    sv2.addEventListener("click",function(){
-      var vals={},bad=[];
-      Object.keys(inputs).forEach(function(k){var x=inputs[k];x.warn.textContent="";
-        if(x.inp.value==="")return;var n=Number(x.inp.value);
-        if(!isFinite(n)){bad.push(x.L.n);return;}
-        var u=x.L.units.filter(function(q){return q[0]===x.sel.value;})[0];var canon=n*u[1];
-        if(canon<x.L.rng[0]||canon>x.L.rng[1]){x.warn.textContent="That looks unusual for "+x.sel.value+" — check the unit.";
-          x.warn.style.color="var(--warn)";bad.push(x.L.n);return;}
-        vals[k]={v:n,u:x.sel.value};});
-      if(bad.length){st.className="stat err";st.textContent="Check: "+bad.join(", ")+".";return;}
-      if(!Object.keys(vals).length){st.className="stat err";st.textContent="Enter at least one result.";return;}
-      t.date=di.value||today();t.vals=vals;
-      var i=S.labs.findIndex(function(x){return x.id===t.id;});
-      if(i>=0)S.labs[i]=t;else S.labs.push(t);
-      saveL();closeSheet();renderBio();
-      var p=phenoAge(t);
-      toast(p&&has(p.value)?"PhenoAge "+p.value.toFixed(1):"Saved. Still missing "+((p&&p.missing)||[]).length+" result"+(((p&&p.missing)||[]).length===1?"":"s")+".");
-    });
-    c.appendChild(sv2);
-    if(editing){
-      var del=el("button","btn sec wide","Delete this test");del.style.marginTop="8px";del.style.color="var(--bad)";
-      del.addEventListener("click",function(){S.labs=S.labs.filter(function(x){return x.id!==t.id;});saveL();closeSheet();renderBio();});
-      c.appendChild(del);
-    }
-    h.appendChild(c);closeBtn(h);
+    sheetTitle(h,"Pace of Aging · "+b.pace.toFixed(1)+"x","Your last 30 days against your last 6 months: "+paceWord(b.pace)+".");
+    var kv=el("div","kv");
+    [["Last 6 months",yrsText(b.delta)],["Last 30 days",yrsText(b.delta30)]].forEach(function(p){
+      var r=el("div","r");r.appendChild(el("div","k",p[0]));r.appendChild(el("div","v",p[1]));kv.appendChild(r);});
+    h.appendChild(kv);
+    h.appendChild(Object.assign(el("div","stept"),{textContent:"Biggest changes this month"}));
+    var kv2=el("div","kv"),ch=b.rows.filter(function(r){return r.x;}).map(function(r){return {m:r.m,d:r.years30-r.years};})
+      .sort(function(x,y){return Math.abs(y.d)-Math.abs(x.d);}).slice(0,4);
+    ch.forEach(function(c){var r=el("div","r");r.appendChild(el("div","k",c.m.n));
+      var v=el("div","v",yrsText(c.d));v.style.color=yrsColor(c.d);r.appendChild(v);kv2.appendChild(r);});
+    h.appendChild(kv2);
+    var f=el("div","fml");f.innerHTML="<b>How it's worked out.</b> If you kept your last 30 days' habits, your 6-month numbers would drift toward them over the next half-year. "+
+      "Pace = (0.5 + change in years) ÷ 0.5, so 1.0x means aging one year per year, 2.0x means two, and below 0 means getting younger. WHOOP shows it from −1x to 3x, and so does this.";
+    h.appendChild(f);closeBtn(h);
   });
 }
-var BIOMARKERS=["weight","hrvSleep","hrSleep","vo2max","asleepMin"];
-var BIONAME={weight:"Weight",hrvSleep:"HRV Baselines",hrSleep:"RHR Baselines",vo2max:"VO₂ Max",asleepMin:"Sleep Baselines"};
+function renderHealthspan(b){
+  var host=$("hsList");if(!host)return;host.innerHTML="";
+  if(!b||b.needsAge)return;
+  var age=b.age;
+  ["Sleep","Strain","Fitness"].forEach(function(g){
+    var hd=el("div","stept",g);hd.style.cssText="margin:"+(g==="Sleep"?"0":"16px")+" 4px 8px;color:var(--ink3);font-size:13px;text-transform:uppercase;letter-spacing:.04em";
+    host.appendChild(hd);
+    var c=el("div","card");c.style.padding="4px 15px";
+    b.rows.filter(function(r){return r.m.g===g;}).forEach(function(rw){
+      var m=rw.m,row=el("div","lrow");row.style.cursor="pointer";
+      var bd=el("div","b");bd.appendChild(el("div","t",m.n));
+      bd.appendChild(el("div","s",rw.x?m.fmt(rw.x.v)+" · target "+m.tgtTxt(age)
+        :m.k==="lean"?"Add your body fat % to include this":"Not enough data yet"));
+      row.appendChild(bd);
+      var y=el("div",null,rw.x?yrsText(rw.years):"—");
+      y.style.cssText="font-size:14px;font-weight:650;font-variant-numeric:tabular-nums;color:"+(rw.x?yrsColor(rw.years):"var(--ink4)");
+      row.appendChild(y);
+      var ar=sv("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2.4",
+        "stroke-linecap":"round","stroke-linejoin":"round",class:"arrow"});ar.appendChild(sv("path",{d:"M9 6l6 6-6 6"}));
+      row.appendChild(ar);
+      row.addEventListener("click",function(){if(!rw.x&&m.k==="lean")openOneLog("bodyFat");else openHsMetric(m.k);});
+      c.appendChild(row);
+    });
+    host.appendChild(c);
+  });
+}
+function openHsMetric(k){
+  var b=whoopAge();if(!b||!b.rows)return;
+  var rw=b.rows.filter(function(r){return r.m.k===k;})[0];if(!rw)return;
+  var m=rw.m,w=b.win||healthspanMetrics(viewDateStr(),182);
+  openSheet(function(h){
+    sheetTitle(h,m.n,m.s+(k==="z13"&&w?" For you that's "+Math.round(w.L1)+"–"+Math.round(w.L4)+" bpm.":
+      k==="z45"&&w?" For you that's above "+Math.round(w.L4)+" bpm.":""));
+    var kv=el("div","kv");
+    function row(a,v,c){var r=el("div","r");r.appendChild(el("div","k",a));var x=el("div","v",v);if(c)x.style.color=c;r.appendChild(x);kv.appendChild(r);}
+    row("Last 6 months",rw.x?m.fmt(rw.x.v):"—");
+    row("Last 30 days",rw.y30&&rw.y30!==rw.x?m.fmt(rw.y30.v):rw.x?"same":"—");
+    row("Target for you",m.tgtTxt(b.age)+(k==="vo2"?" ml/kg/min":k==="rhr"?" bpm":""));
+    if(rw.x)row("Effect on your age",yrsText(rw.years),yrsColor(rw.years));
+    if(rw.x&&k!=="vo2"&&k!=="lean")row("Based on",rw.x.n+(k==="sleepH"||k==="sleepC"||k==="rhr"?" nights":" days"));
+    if(k==="lean"&&rw.x&&rw.x.date)row("Reading from",sdate(rw.x.date));
+    h.appendChild(kv);
+    var f=el("div","fml");f.innerHTML="<b>How it's scored.</b> "+m.how;h.appendChild(f);
+    var t=el("div","fml");t.style.marginTop="10px";t.innerHTML="<b>To improve it.</b> "+m.tip;h.appendChild(t);
+    if(k==="lean"){var ab=el("button","btn sec wide","Add body fat %");ab.style.marginTop="12px";
+      ab.addEventListener("click",function(){openOneLog("bodyFat");});h.appendChild(ab);}
+    closeBtn(h);
+  });
+}
+var BIOMARKERS=["weight","bodyFat","hrvSleep","hrSleep","vo2max","asleepMin"];
+var BIONAME={weight:"Weight",bodyFat:"Body Fat",hrvSleep:"HRV Baselines",hrSleep:"RHR Baselines",vo2max:"VO₂ Max",asleepMin:"Sleep Baselines"};
 function renderBiomarkers(){
   var host=$("bmList");host.innerHTML="";var any=false;
   BIOMARKERS.forEach(function(k){
@@ -2397,7 +2711,7 @@ function renderBiomarkers(){
     meta.appendChild(trend);
     var dot=el("span",null,"·");dot.style.color="var(--ink4)";meta.appendChild(dot);
     var val=el("span");val.style.cssText="font-weight:620;letter-spacing:-.02em";
-    var LATEST={weight:1,vo2max:1};
+    var LATEST={weight:1,vo2max:1,bodyFat:1};
     var shown=LATEST[k]?s[s.length-1].v:mean(s.slice(-14).map(function(d){return d.v;}));
     val.textContent=String(m.fmt(shown))+(unitOf(m)?" "+unitOf(m):"");
     meta.appendChild(val);l.appendChild(meta);
@@ -2572,7 +2886,7 @@ $("menuBtn").addEventListener("click",function(){
     closeBtn(h);
   });
 });
-$("fab").addEventListener("click",openLog);
+$("fab").addEventListener("click",openQuickLog);
 $("statusPill").addEventListener("click",function(){openDetail("energy");});
 $("energyBar").addEventListener("click",function(){openDetail("energy");});
 $("stressCard").addEventListener("click",function(){openDetail("stress");});
@@ -2862,6 +3176,43 @@ function openLog(){
     closeBtn(h);
   });
 }
+// The + button: one number at a time, or the full day form.
+function openQuickLog(){
+  openSheet(function(h){
+    sheetTitle(h,"Add","Log one thing, or fill in a whole day.");
+    menuItem(h,"scale","Weight",function(){openOneLog("weight");});
+    menuItem(h,"drop","Body fat",function(){openOneLog("bodyFat");});
+    menuItem(h,"bed","Full day entry",openLog);
+    closeBtn(h);
+  });
+}
+function openOneLog(field){
+  var isW=field==="weight",unit=isW?S.settings.weightUnit:"%";
+  openSheet(function(h){
+    sheetTitle(h,isW?"Log weight":"Log body fat",isW?"Saved to the day you pick. A weight from Apple Health on the same day replaces it at your next export."
+      :"From a smart scale, gym scan or DEXA. Biological Age uses it as lean body mass (100 − body fat %).");
+    var f=el("form");
+    var dd=el("div","fld");dd.appendChild(el("label",null,"Date"));
+    var di=el("input");di.type="date";di.max=today();di.value=today();dd.appendChild(di);f.appendChild(dd);
+    var vd=el("div","fld");vd.appendChild(el("label",null,isW?"Weight":"Body fat"));
+    var w=el("div","sfx"),inp=el("input");inp.type="number";inp.step="0.1";inp.setAttribute("inputmode","decimal");
+    inp.placeholder=isW?(S.settings.weightUnit==="kg"?"75.0":"165.0"):"28.0";
+    w.appendChild(inp);w.appendChild(el("span",null,unit));vd.appendChild(w);f.appendChild(vd);
+    var save=el("button","btn wide","Save");save.type="submit";f.appendChild(save);
+    var st=el("div");f.appendChild(st);h.appendChild(f);
+    function fill(){var ex=entryFor(di.value);inp.value=ex&&has(ex[field])?ex[field]:"";}
+    fill();di.addEventListener("change",fill);
+    setTimeout(function(){try{inp.focus();}catch(e){}},250);
+    f.addEventListener("submit",function(ev){
+      ev.preventDefault();
+      var d=di.value||today(),n=pnum(inp.value,field);
+      if(n===undefined){st.className="stat err";st.textContent=isW?"Enter a weight.":"Enter a body fat % between 2 and 75.";return;}
+      var o={date:d};o[field]=Math.round(n*10)/10;upsert(o);renderAll();closeSheet();
+      toast((isW?"Weight ":"Body fat ")+o[field]+(isW?" "+unit:"%")+" saved for "+sdate(d));
+    });
+    closeBtn(h);
+  });
+}
 
 /* ======================= COACH ======================= */
 function digest(){
@@ -2969,9 +3320,10 @@ function openSettings(){
       c.appendChild(d);return i;
     }
     row("Your initials (shown top right)","se-init","text",S.settings.initials||"ME");
-    row("Date of birth","se-dob","date",S.settings.dob||"","Used for your age in PhenoAge. Filled in from your Health export.");
+    row("Date of birth","se-dob","date",S.settings.dob||"","Used for your age in Biological Age. Filled in from your Health export.");
     row("Max heart rate","se-maxhr","number",maxHR(),"Sets your heart-rate zones for Strain. Bevel uses 194 for you. Re-import after changing it.");
     row("Sleep you need","se-need","number",Math.round((S.settings.sleepNeedMin||481)),"In minutes. Bevel shows this as \"Tonight's sleep needed\" — 481 is 8h 1m.");
+    row("Sleep goal","se-goal","number",sleepGoal(),"In minutes. Sleep Bank counts against this, like Bevel's Sleep Goal — yours is 7h 30m (450).");
     row("Target wake time","se-wake","time",S.settings.wakeTarget||"07:00");
     row("Daily step target","se-steps","number",S.settings.stepGoal||10000);
     row("Weight unit","se-unit","select",S.settings.weightUnit,null,[["lb","Pounds (lb)"],["kg","Kilograms (kg)"]]);
@@ -2983,6 +3335,7 @@ function openSettings(){
       if(/^\d{4}-\d{2}-\d{2}$/.test(dv)&&dv<=today()){S.settings.dob=dv;S.settings.birthYear=+dv.slice(0,4);}
       var mh=parseInt($("se-maxhr").value,10);S.settings.maxHR=(mh>=120&&mh<=240)?mh:194;
       var nd=parseInt($("se-need").value,10);S.settings.sleepNeedMin=nd>0?nd:481;
+      var gl=parseInt($("se-goal").value,10);S.settings.sleepGoalMin=gl>=180&&gl<=720?gl:450;
       S.settings.wakeTarget=$("se-wake").value||"07:00";
       var sg=parseInt($("se-steps").value,10);S.settings.stepGoal=sg>0?sg:10000;
       S.settings.weightUnit=$("se-unit").value;S.settings.theme=$("se-theme").value;
@@ -3116,9 +3469,9 @@ if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)");
   if(mq.addEventListener)mq.addEventListener("change",function(){if(S.settings.theme==="system")applyTheme();});}
 // read-only hook for checking the numbers from the browser console
 window.bevelLocal={state:S,sleep:sleepScore,recovery:recoveryScore,strain:strainScore,stress:stressScore,
-  energy:energyBank,target:targetStrain,hrDip:hrDip,entry:entryFor,baseline:baseline,
+  energy:energyBank,target:targetStrain,hrDip:hrDip,sleepBank:sleepBank,entry:entryFor,baseline:baseline,
   view:function(d){S.viewDate=d||null;renderAll();},detail:function(k){openDetail(k);},
-  pheno:phenoFrom,phenoAge:phenoAge,labs:function(){return S.labs;}};
+  whoopAge:whoopAge,healthspan:healthspanMetrics,sleepConsistency:sleepConsistencyDay,nightLow:nightLow,labs:function(){return S.labs;}};
 })();
 </script>
 </body>
