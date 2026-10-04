@@ -542,7 +542,7 @@ var OLD=[{e:"bevelLocal_entries_v2",s:"bevelLocal_settings_v2",c:"bevelLocal_cha
          {e:"bevelLocal_entries_v1",s:"bevelLocal_settings_v1",c:"bevelLocal_chat_v1"}];
 function ld(k,f){try{var r=localStorage.getItem(k);return r?JSON.parse(r):f;}catch(e){return f;}}
 function sd(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-var DEF={apiKey:"",model:"claude-sonnet-4-5-20250929",customModel:"",weightUnit:"lb",theme:"light",
+var DEF={apiKey:"",model:"claude-sonnet-5-5",customModel:"",weightUnit:"lb",theme:"light",
   sleepNeedMin:481,sleepGoalMin:450,stepGoal:10000,birthYear:null,maxHR:194,wakeTarget:"07:00",initials:"ME"};
 var S={entries:ld(K.entries,null),settings:Object.assign({},DEF,ld(K.settings,{})||{}),chat:ld(K.chat,[]),tab:"home",
   viewDate:null,calMetric:"recovery",calMonth:null};
@@ -3310,7 +3310,20 @@ function openCoach(){
 }
 
 /* ======================= SETTINGS / BACKUP ======================= */
-var APP_VER="Oct 4 · 2";
+var APP_BUILD=3,APP_VER="Oct 4 · build 3";
+/* Self-update: phones keep an old copy of this page (Safari tabs, the browser cache). On every open,
+   fetch the live file from GitHub, skipping all caches; if it has a newer build number, reload into it.
+   Your data lives in this browser's storage, not in the page, so nothing is lost. */
+function checkForUpdate(){
+  if(!/^https?:$/.test(location.protocol)||!window.fetch)return;
+  fetch(location.pathname+"?check="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.text():"";})
+  .then(function(t){
+    var m=/var APP_BUILD=(\d+)/.exec(t||"");if(!m||Number(m[1])<=APP_BUILD)return;
+    var key="bevelLocal_updatedTo";
+    try{if(sessionStorage.getItem(key)===m[1])return;sessionStorage.setItem(key,m[1]);}catch(e){}
+    location.replace(location.pathname+"?v="+m[1]+(location.hash||""));
+  }).catch(function(){});
+}
 function openSettings(){
   openSheet(function(h){
     sheetTitle(h,"Settings");
@@ -3367,14 +3380,23 @@ function openSettings(){
     c2.appendChild(kd);
     var md=el("div","fld");md.appendChild(el("label",null,"Model"));
     var ms=el("select");ms.id="se-model";
-    [["claude-sonnet-4-5-20250929","Claude Sonnet 4.5 — balanced"],
-     ["claude-opus-4-1-20250805","Claude Opus 4.1 — most capable"],
-     ["claude-haiku-4-5-20251001","Claude Haiku 4.5 — fastest"]].forEach(function(o){
+    [["claude-sonnet-5-5","Claude Sonnet 5.5 — balanced"],
+     ["claude-opus-5-5","Claude Opus 5.5 — most capable"],
+     ["claude-sonnet-4-5-20250929","Claude Sonnet 4.5"],
+     ["claude-opus-4-1-20250805","Claude Opus 4.1"],
+     ["claude-haiku-4-5-20251001","Claude Haiku 4.5 — fastest"],
+     ["custom","Other — type a model ID…"]].forEach(function(o){
       var op=el("option",null,o[1]);op.value=o[0];ms.appendChild(op);});
-    ms.value=S.settings.model;md.appendChild(ms);c2.appendChild(md);
+    ms.value=S.settings.model;md.appendChild(ms);
+    // newer models appear all the time, so any model ID can be typed in
+    var cm=el("input");cm.id="se-custom";cm.type="text";cm.placeholder="e.g. claude-sonnet-5-5";cm.value=S.settings.customModel||"";
+    cm.setAttribute("autocapitalize","off");cm.setAttribute("autocorrect","off");cm.spellcheck=false;cm.style.marginTop="8px";
+    function showCm(){cm.style.display=ms.value==="custom"?"block":"none";}
+    ms.addEventListener("change",showCm);showCm();md.appendChild(cm);c2.appendChild(md);
     var kb=el("button","btn wide","Save key");
     kb.addEventListener("click",function(){
-      S.settings.apiKey=$("se-key").value.trim();S.settings.model=$("se-model").value;saveS();
+      S.settings.apiKey=$("se-key").value.trim();S.settings.model=$("se-model").value;
+      S.settings.customModel=$("se-custom").value.trim();saveS();
       var s=$("keyStat");s.className="stat ok";s.textContent=S.settings.apiKey?"Coach is ready.":"Key cleared.";
       setTimeout(function(){s.textContent="";s.className="";},2400);});
     c2.appendChild(kb);var ks=el("div");ks.id="keyStat";c2.appendChild(ks);
@@ -3472,6 +3494,8 @@ try{
 }catch(e){}
 
 applyTheme();if(!consumeBl()){consumeSync();renderAll();go("home");}
+setTimeout(checkForUpdate,600);
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")checkForUpdate();});
 if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)");
   if(mq.addEventListener)mq.addEventListener("change",function(){if(S.settings.theme==="system")applyTheme();});}
 // read-only hook for checking the numbers from the browser console
