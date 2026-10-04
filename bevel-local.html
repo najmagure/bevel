@@ -3061,8 +3061,12 @@ function consumeSync(){
   try{history.replaceState(null,"",window.location.pathname+window.location.search);}
   catch(err){try{window.location.hash="";}catch(e2){}}
 }
+// When the Shortcut opens the link while this page is already open in a Safari tab, only the #… part
+// changes and the old copy of the app would keep running. Reload instead, so a new version you've
+// uploaded to GitHub is picked up; the fresh page reads the #bl data as it starts.
 window.addEventListener("hashchange",function(){var h=window.location.hash||"";
-  if(h.indexOf("#bl")===0)consumeBl();else if(h.indexOf("#sync")===0)consumeSync();});
+  if(h.indexOf("#bl")===0){try{window.location.reload();}catch(err){consumeBl();}}
+  else if(h.indexOf("#sync")===0)consumeSync();});
 function toast(m){var t=el("div","toast",m);document.body.appendChild(t);
   setTimeout(function(){t.classList.add("show");},30);
   setTimeout(function(){t.classList.remove("show");setTimeout(function(){t.remove();},350);},3400);}
@@ -3306,6 +3310,7 @@ function openCoach(){
 }
 
 /* ======================= SETTINGS / BACKUP ======================= */
+var APP_VER="Oct 4 · 2";
 function openSettings(){
   openSheet(function(h){
     sheetTitle(h,"Settings");
@@ -3373,7 +3378,9 @@ function openSettings(){
       var s=$("keyStat");s.className="stat ok";s.textContent=S.settings.apiKey?"Coach is ready.":"Key cleared.";
       setTimeout(function(){s.textContent="";s.className="";},2400);});
     c2.appendChild(kb);var ks=el("div");ks.id="keyStat";c2.appendChild(ks);
-    h.appendChild(c2);closeBtn(h);
+    h.appendChild(c2);
+    var ver=el("div",null,"Bevel Local · version "+APP_VER);ver.style.cssText="text-align:center;font-size:12px;color:var(--ink3);margin-top:14px";
+    h.appendChild(ver);closeBtn(h);
   });
 }
 function openBackup(){
