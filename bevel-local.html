@@ -499,6 +499,21 @@
   .tv-def p{font-size:17px;line-height:1.55;color:var(--ink3);margin:0 0 18px}
   .tv-def p b{color:var(--ink2);font-weight:600}
   body.noscroll{overflow:hidden}
+  .tv-st{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+  .tv-sti{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;flex-shrink:0}
+  .tv-sti svg{width:14px;height:14px}
+  .trow .s .tv-sti{width:17px;height:17px}.trow .s .tv-sti svg{width:11px;height:11px}
+  .tv-rcard{background:var(--card);border-radius:24px;box-shadow:var(--sh);padding:22px 20px 18px;margin-bottom:26px}
+  .tv-rbar{display:flex;gap:5px;height:18px;margin:8px 0 12px}
+  .tv-rbar i{flex:1;border-radius:4px}
+  .tv-rbar i:first-child{border-radius:999px 4px 4px 999px}.tv-rbar i:last-child{border-radius:4px 999px 999px 4px}
+  .tv-rbar b{position:absolute;top:-6px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;
+    border-top:12px solid #fff;transform:translateX(-50%);filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
+  .tv-rlab{display:flex;font-size:15px;color:var(--ink3);font-variant-numeric:tabular-nums}
+  .tv-rlab span{flex:1}
+  .tv-rt{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-top:18px}
+  .tv-rs{font-size:16px;color:var(--ink2);font-weight:500;margin-top:4px}
+  .tv-rl{font-size:15.5px;color:var(--ink4);margin-top:8px}
 </style>
 </head>
 <body>
@@ -2111,6 +2126,15 @@ var DEFS={
   sleepStress:{d:"Sleep Stress is your stress while asleep. Lower means your body could switch off and recover.",
     how:"The 5-minute stress readings during sleep, averaged.",
     imp:"Avoid alcohol, late meals and hard training close to bedtime."},
+  hrvBase:{d:"HRV Baselines is your typical resting HRV lately: the average over the previous 30 days. It moves slowly, so it shows where your recovery is heading rather than how one night went.",
+    how:"The average of your nightly HRV (RMSSD while asleep) over the 30 days before each date.",
+    imp:"Regular sleep and wake times, aerobic training, less alcohol, not eating late, and managing stress raise it over weeks."},
+  rhrBase:{d:"RHR Baselines is your typical resting heart rate lately: the average over the previous 30 days. Lower generally means a fitter, better-rested heart.",
+    how:"The average of your sleeping heart rate over the 30 days before each date, compared with Bevel's ranges for women your age.",
+    imp:"Steady aerobic exercise brings it down over weeks: brisk walks, cycling, swimming. Good sleep, hydration and less alcohol help too."},
+  sleepBase:{d:"Sleep Baselines is how much you've been sleeping lately: your average time asleep over the previous 30 days.",
+    how:"The average of your total time asleep, naps included, over the 30 days before each date.",
+    imp:"Earlier, regular bedtimes raise it more reliably than long lie-ins."},
   weight:{d:"Your body weight from Apple Health or your own logs.",how:"The latest reading of each day."},
   vo2max:{d:"VO₂ Max estimates your cardiorespiratory fitness: the most oxygen your body can use during hard exercise.",
     how:"Apple Watch's estimates from outdoor walks, runs and hikes.",
@@ -2118,6 +2142,47 @@ var DEFS={
   bodyFat:{d:"Your body fat percentage.",how:"The readings you log with the + button.",
     imp:"Strength training and enough protein keep lean mass while you lose fat."}
 };
+/* ---- Biology: Bevel's "Baselines" are the average of the 30 days before each date
+   (matches your Bevel RHR and HRV Baselines to 0.1 on Aug 30, Sep 29 and Oct 29) ---- */
+function bioBase(kind,ds){
+  return memo("bb|"+kind+"|"+ds,function(){
+    var v=[];for(var k=1;k<=30;k++){var x=entryFor(addDays(ds,-k));if(!x)continue;
+      var y=kind==="hrv"?hrvOf(x):kind==="rhr"?(has(x.hrSleep)?Number(x.hrSleep):null):(has(x.asleepMin)?Number(x.asleepMin):null);
+      if(y!==null&&isFinite(y))v.push(y);}
+    return v.length>=3?mean(v):null;});
+}
+M.hrvBase={n:"HRV Baselines",i:"wave",c:"var(--recovery)",better:"high",bio:1,
+  at:function(ds){return bioBase("hrv",ds);},get:function(e){return bioBase("hrv",e.date);},fmt:function(v){return v.toFixed(1);},u:"ms"};
+M.rhrBase={n:"RHR Baselines",i:"heart",c:"var(--recovery)",better:"low",bio:1,
+  at:function(ds){return bioBase("rhr",ds);},get:function(e){return bioBase("rhr",e.date);},fmt:function(v){return v.toFixed(1);},u:"bpm"};
+M.sleepBase={n:"Sleep Baselines",i:"bed",c:"var(--sleep)",better:"high",bio:1,kind:"dur",
+  at:function(ds){return bioBase("sleep",ds);},get:function(e){return bioBase("sleep",e.date);},fmt:function(v){return hm(v);},u:""};
+M.weight.bio=1;M.vo2max.bio=1;M.bodyFat.bio=1;
+// The bands Bevel standardises against for a woman your age (from your Bevel screens).
+var BIO_RANGES={
+  rhrBase:{f:{age:[18,25],cuts:[38.4,52.0,58.4,68.0]},names:["Excellent","Very good","Good","Fair","Poor"]},
+  vo2max:{f:{age:[20,29],cuts:[30.5,37.6,44.7,51.3]},names:["Poor","Fair","Good","Excellent","Superior"]}
+};
+function bioRange(key){
+  var R=BIO_RANGES[key];if(!R)return null;
+  var sx=sexOf(),a=ageOn(today()),g=sx==="female"?R.f:R.m;
+  if(!g||a===null||a<g.age[0]||a>=g.age[1]+1)return null;
+  return {cuts:g.cuts,names:R.names,age:g.age,sex:sx};
+}
+function rangeIdx(cuts,v){var i=0;while(i<cuts.length&&v>=cuts[i])i++;return i;}
+function catCol(nm){return nm==="Poor"?"#EF8F55":nm==="Fair"?"#F2A842":"#7BC390";}
+// status beside a biology value: your band when Bevel has one, otherwise the direction over ~6 months
+function bioStatus(key,ds,v){
+  var R=bioRange(key);
+  if(R){var i=rangeIdx(R.cuts,v),nm=R.names[i];return {word:nm,col:catCol(nm),range:R,idx:i};}
+  var m=M[key],b=null;
+  for(var k=182;k>=30&&b===null;k--)b=dayVal(key,addDays(ds,-k));
+  if(b===null||!b)return {word:"Steady",col:"var(--ink3)",dir:null};
+  var r=(v-b)/Math.abs(b),dir=r>0.02?"up":r<-0.02?"down":null;
+  if(!dir)return {word:"Steady",col:"var(--ink3)",dir:null};
+  var good=m.better==="high"?dir==="up":m.better==="low"?dir==="down":null;
+  return {word:dir==="up"?"Increasing":"Decreasing",dir:dir,col:good===true?"var(--st-good)":good===false?"var(--st-bad)":"var(--ink3)"};
+}
 function seriesOf(key,days){
   // history up to the day you're viewing, so trends line up with the date picker
   var m=M[key],upto=S.viewDate||"9999",all=S.entries.slice(0,lowerIdx(upto)+(entryFor(upto)?1:0));
@@ -2694,7 +2759,8 @@ function dshort(ds){return pday(ds).toLocaleDateString(undefined,{month:"short",
 function dlong(ds){return pday(ds).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
 
 // one value per calendar day for a metric
-function dayVal(key,ds){var e=entryFor(ds);if(!e)return null;var v=M[key].get(e);return v===null||v===undefined||!isFinite(v)?null:Number(v);}
+function dayVal(key,ds){var m=M[key];if(m.at){var a=m.at(ds);return a===null||a===undefined||!isFinite(a)?null:Number(a);}
+  var e=entryFor(ds);if(!e)return null;var v=m.get(e);return v===null||v===undefined||!isFinite(v)?null:Number(v);}
 function dayVals(key,from,to){var out=[];for(var d=dnum(from);d<=dnum(to);d++){var ds=dstrN(d);out.push({date:ds,v:dayVal(key,ds)});}return out;}
 // your normal range on a day, the way Bevel shows it: the 30 days up to and including it, average ± 0.95 SD
 function normalBand(key,ds){
@@ -2743,8 +2809,12 @@ function renderTrend(){
   var key=TV.key,m=M[key],host=$("trendBody");host.innerHTML="";
   $("trendTitle").textContent=m.n;
   var cat=catOf(key);$("trendPage").setAttribute("data-cat",cat);
-  var from=addDays(TV.end,-(TV.span-1)),days=dayVals(key,from,TV.end);
-  var pts=days.filter(function(d){return d.v!==null;});
+  var from=addDays(TV.end,-(TV.span-1)),daily=dayVals(key,from,TV.end),bio=!!m.bio;
+  // like Bevel, longer periods are drawn as about 30 points: 3M every 3 days, 6M every 6, 1Y every 12
+  var BK=Math.max(1,Math.round(TV.span/30)),days=bucketize(daily,BK);
+  var pts=days.filter(function(d){return d.v!==null;}),dpts=daily.filter(function(d){return d.v!==null;});
+  var prevPt=null;
+  if(bio){for(var pk=1;pk<=90;pk++){var pv=dayVal(key,addDays(from,-pk));if(pv!==null){prevPt={v:pv,off:pk/BK};break;}}}
 
   // value + status
   var top=el("div","tv-top");
@@ -2757,10 +2827,13 @@ function renderTrend(){
     valEl.style.color="";
     valEl.appendChild(document.createTextNode(valTxt(m,p.v)));
     var u=unitOf(m);if(u)valEl.appendChild(el("span","u",(u==="%"?" ":" ")+u));
-    dateEl.textContent=dlong(p.date);
+    dateEl.textContent=p.from&&p.from!==p.date?dshort(p.from)+" – "+dlong(p.date):dlong(p.date);
+    rgEl.innerHTML="";
+    if(bio){var bs=bioStatus(key,p.date,p.v);stEl.innerHTML="";stEl.style.color=bs.col;
+      if(bs.dir){var ic=el("span","tv-sti");ic.innerHTML=bs.dir==="up"?ICO2.arU:ICO2.arD;ic.style.background=bs.col;stEl.appendChild(ic);}
+      stEl.appendChild(document.createTextNode(bs.word));return;}
     var st=statusAt(key,p.date,p.v);
     stEl.textContent=st.word==="Logged"?"":st.word;stEl.style.color=st.col;
-    rgEl.innerHTML="";
     if(st.nb){rgEl.appendChild(el("i","sw"));
       rgEl.appendChild(document.createTextNode(axRange(m,st.nb)));}
   }
@@ -2781,7 +2854,7 @@ function renderTrend(){
 
   // chart
   var ch=el("div","tv-chart");host.appendChild(ch);
-  if(pts.length)drawTrendChart(ch,key,days,pts,showDay,lastP);
+  if(pts.length)drawTrendChart(ch,key,days,pts,showDay,lastP,{avg:mean(dpts.map(function(d){return d.v;})),bio:bio,prev:prevPt});
   else ch.appendChild(el("div","empty","No "+m.n+" in this period."));
 
   // period bar
@@ -2810,9 +2883,11 @@ function renderTrend(){
   // lower part
   var low=el("div","tv-low");host.appendChild(low);
   var B=BANDS[key];
+  var BR=bio&&lastP?bioRange(key):null;
+  if(BR)low.appendChild(rangeCard(key,BR,lastP.v,lastDataDate(key,TV.end)));
   if(B&&pts.length){
     low.appendChild(el("div","tv-h",B.title));
-    var cnt=[0,0,0];pts.forEach(function(p){cnt[p.v<B.cuts[0]?0:p.v<=B.cuts[1]?1:2]++;});
+    var cnt=[0,0,0];dpts.forEach(function(p){cnt[p.v<B.cuts[0]?0:p.v<=B.cuts[1]?1:2]++;});
     var bar=el("div","tv-brk");
     cnt.forEach(function(c,i){if(!c)return;var s=el("i");s.style.flex=String(c);s.style.background=B.cols[i];bar.appendChild(s);});
     low.appendChild(bar);
@@ -2837,6 +2912,32 @@ function renderTrend(){
   }
   host.appendChild(def);
 }
+function bucketize(days,BK){
+  if(BK<=1)return days;
+  var out=[];
+  for(var i=days.length-1;i>=0;i-=BK){
+    var ch=days.slice(Math.max(0,i-BK+1),i+1),v=ch.filter(function(d){return d.v!==null;}).map(function(d){return d.v;});
+    out.unshift({date:ch[ch.length-1].date,from:ch[0].date,v:v.length?mean(v):null,n:v.length});
+  }
+  return out;
+}
+function rangeCard(key,R,v,ld){
+  var c=el("div","tv-rcard"),i0=rangeIdx(R.cuts,v),col=catCol(R.names[i0]);
+  var bar=el("div","tv-rbar");
+  for(var i=0;i<5;i++){var sg=el("i");sg.style.background=col;sg.style.opacity=i===i0?"1":".26";
+    // the open-ended ends run from 0 and up to ~1.9× the top cut, which is where Bevel puts the marker
+    if(i===i0){var lo=i===0?0:R.cuts[i-1],hi=i===4?R.cuts[3]*1.88:R.cuts[i];
+      var mk=el("b");mk.style.left=(clamp((v-lo)/(hi-lo),0.04,0.96)*100)+"%";sg.appendChild(mk);sg.style.position="relative";}
+    bar.appendChild(sg);}
+  c.appendChild(bar);
+  var lab=el("div","tv-rlab");
+  ["<"+R.cuts[0].toFixed(1),R.cuts[0].toFixed(1),R.cuts[1].toFixed(1),R.cuts[2].toFixed(1),">"+R.cuts[3].toFixed(1)].forEach(function(t){lab.appendChild(el("span",null,t));});
+  c.appendChild(lab);
+  var t1=el("div","tv-rt");t1.appendChild(document.createTextNode("Your range is "));var nm=el("span",null,R.names[i0]);nm.style.color=col;t1.appendChild(nm);c.appendChild(t1);
+  c.appendChild(el("div","tv-rs","Standardized for "+R.age[0]+" - "+R.age[1]+" "+(R.sex==="male"?"males":"females")));
+  if(ld)c.appendChild(el("div","tv-rl","Last data point on "+dlong(ld)));
+  return c;
+}
 function axRange(m,nb){
   var u=unitOf(m),k=kindOf(m);
   function f(v){if(k==="dur")return hm(Math.max(0,v))||"0m";if(k==="clock")return todLabel(((v%1440)+1440)%1440);
@@ -2845,16 +2946,17 @@ function axRange(m,nb){
   return f(nb.lo)+" - "+f(nb.hi)+(u==="%"?"%":u&&k==="num"?" "+u:"");
 }
 
-function drawTrendChart(host,key,days,pts,showDay,lastP){
-  var m=M[key],B=BANDS[key],n=days.length;
+function drawTrendChart(host,key,days,pts,showDay,lastP,opt){
+  opt=opt||{};
+  var m=M[key],B=BANDS[key],n=days.length,bio=!!opt.bio;
   var W=360,H=270,x0=6,x1=W-50,y0=14,y1=H-36,iw=x1-x0,ih=y1-y0;
-  var bands=days.map(function(d){return normalBand(key,d.date);});
+  var bands=bio?days.map(function(){return null;}):days.map(function(d){return normalBand(key,d.date);});
   var vals=pts.map(function(p){return p.v;});
   var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
   bands.forEach(function(b){if(b){lo=Math.min(lo,b.lo);hi=Math.max(hi,b.hi);}});
-  var avg=mean(vals),nonneg=vals.every(function(v){return v>=0;});
+  var avg=opt.avg!==undefined&&opt.avg!==null?opt.avg:mean(vals),nonneg=vals.every(function(v){return v>=0;});
   var spn=hi-lo||Math.abs(hi)*0.2||1;lo-=spn*0.12;hi+=spn*0.22;
-  if(nonneg&&(lo<0||lo<0.35*hi))lo=0;
+  if(!bio&&nonneg&&(lo<0||lo<0.35*hi))lo=0;
   if(key==="recoveryScore"||key==="sleepScore"){hi=Math.min(hi,100);lo=Math.max(lo,0);}
   var X=function(i){return n===1?x0+iw/2:x0+iw*i/(n-1);},Y=function(v){return y0+ih*(1-(v-lo)/(hi-lo));};
   var s=sv("svg",{viewBox:"0 0 "+W+" "+H,class:"tv-svg"});
@@ -2870,40 +2972,52 @@ function drawTrendChart(host,key,days,pts,showDay,lastP){
   var step=(hi-lo)/3;
   for(var g=0;g<4;g++){var gv=lo+step*g,gy=Y(gv);
     if(g>0)s.appendChild(sv("line",{x1:x0,x2:x1,y1:gy,y2:gy,class:"tv-grid"}));
-    var t=sv("text",{x:W-4,y:gy+4.5,"text-anchor":"end",class:"tv-ylab"});t.textContent=axTxt(m,gv,step);s.appendChild(t);}
-  s.appendChild(sv("line",{x1:x0,x2:x0,y1:y0-6,y2:y1,class:"tv-axis"}));
-  s.appendChild(sv("line",{x1:x0,x2:x1+8,y1:y1,y2:y1,class:"tv-axis"}));
+    var t=sv("text",{x:W-4,y:bio?gy-6:gy+4.5,"text-anchor":"end",class:"tv-ylab"});t.textContent=axTxt(m,gv,step);s.appendChild(t);}
+  if(!bio)s.appendChild(sv("line",{x1:x0,x2:x0,y1:y0-6,y2:y1,class:"tv-axis"}));
+  s.appendChild(sv("line",{x1:bio?0:x0,x2:bio?W:x1+8,y1:y1,y2:y1,class:"tv-axis"}));
   // normal band
   var top="",bot="",seg=[];
   function flush(){if(seg.length>1){var a=seg.map(function(q){return X(q.i)+","+Y(q.b.hi);}),b=seg.slice().reverse().map(function(q){return X(q.i)+","+Y(q.b.lo);});
       s.appendChild(sv("path",{d:"M"+a.join(" L")+" L"+b.join(" L")+" Z",class:"tv-band"}));}seg=[];}
   bands.forEach(function(b,i){if(b)seg.push({i:i,b:b});else flush();});flush();
-  // the line, broken over missing days
+  // Biology charts: one colour, joined across gaps, shaded underneath, with the line coming in from
+  // the last reading before this period (grey), the way Bevel draws them
+  var BR=bio?bioRange(key):null,bcol=BR?catCol(BR.names[rangeIdx(BR.cuts,lastP.v)]):"var(--ink)";
+  if(bio){
+    var cid="tvc"+(++gradSeq),cp=sv("clipPath",{id:cid});cp.appendChild(sv("rect",{x:0,y:0,width:x1+4,height:H}));defs.appendChild(cp);
+    var ag="tva"+gradSeq,alg=sv("linearGradient",{id:ag,x1:0,x2:0,y1:0,y2:1});
+    alg.appendChild(sv("stop",{offset:0,"stop-color":bcol,"stop-opacity":.2}));alg.appendChild(sv("stop",{offset:1,"stop-color":bcol,"stop-opacity":.02}));defs.appendChild(alg);
+    var ip=[];days.forEach(function(p,i){if(p.v!==null)ip.push([X(i),Y(p.v)]);});
+    if(opt.prev&&ip.length){var px=n===1?x0-20:x0-iw*opt.prev.off/(n-1),py=Y(opt.prev.v);
+      s.appendChild(sv("path",{d:"M"+px+","+py+" L"+ip[0][0]+","+ip[0][1],stroke:"var(--ink4)","stroke-width":2.4,fill:"none","clip-path":"url(#"+cid+")"}));}
+    if(ip.length>1)s.appendChild(sv("path",{d:"M"+ip.map(function(q){return q[0].toFixed(1)+","+q[1].toFixed(1);}).join(" L")+" L"+ip[ip.length-1][0]+","+y1+" L"+ip[0][0]+","+y1+" Z",fill:"url(#"+ag+")"}));
+  }
+  // the line, broken over missing days (joined for Biology)
   var d="",prev=-9;
-  days.forEach(function(p,i){if(p.v===null)return;d+=(i-prev>1?"M":"L")+X(i).toFixed(1)+","+Y(p.v).toFixed(1);prev=i;});
-  var stroke=B?"url(#"+gid+")":"var(--acc)";
+  days.forEach(function(p,i){if(p.v===null)return;d+=(!bio&&i-prev>1||prev<0?"M":"L")+X(i).toFixed(1)+","+Y(p.v).toFixed(1);prev=i;});
+  var stroke=bio?bcol:B?"url(#"+gid+")":"var(--acc)";
   s.appendChild(sv("path",{d:d,fill:"none",stroke:stroke,"stroke-width":n>100?2:2.6,"stroke-linejoin":"round","stroke-linecap":"round"}));
   // single points with no neighbour still need to show
   days.forEach(function(p,i){if(p.v===null)return;var l=i>0&&days[i-1].v!==null,r=i<n-1&&days[i+1].v!==null;
     if(!l&&!r&&n>45)s.appendChild(sv("circle",{cx:X(i),cy:Y(p.v),r:2.2,fill:B?bandCol(B,p.v):"var(--acc)"}));});
   if(n<=45)days.forEach(function(p,i){if(p.v===null||p===lastP)return;
-    s.appendChild(sv("circle",{cx:X(i),cy:Y(p.v),r:4.6,class:"tv-dot",stroke:B?bandCol(B,p.v):"var(--acc)"}));});
+    s.appendChild(sv("circle",{cx:X(i),cy:Y(p.v),r:4.6,class:"tv-dot",stroke:bio?bcol:B?bandCol(B,p.v):"var(--acc)"}));});
   var li=days.indexOf(lastP);
-  if(li>=0){var lc=B?bandCol(B,lastP.v):"var(--acc)";
+  if(li>=0){var lc=bio?bcol:B?bandCol(B,lastP.v):"var(--acc)";
     s.appendChild(sv("circle",{cx:X(li),cy:Y(lastP.v),r:11,fill:lc,opacity:.22}));
     s.appendChild(sv("circle",{cx:X(li),cy:Y(lastP.v),r:7,fill:"var(--sheet)"}));
     s.appendChild(sv("circle",{cx:X(li),cy:Y(lastP.v),r:4.6,fill:lc}));}
-  // average line + pill
-  var ay=Y(avg);
+  // average line + pill (not on Biology charts)
+  if(!bio){var ay=Y(avg);
   s.appendChild(sv("line",{x1:x0,x2:x1+8,y1:ay,y2:ay,class:"tv-avg"}));
   var at="Avg. "+valTxt(m,avg)+(unitOf(m)==="%"?"%":unitOf(m)&&kindOf(m)==="num"?" "+unitOf(m):"");
   var tw=at.length*7.4+22,tx=x0+iw*0.5-tw/2;
   s.appendChild(sv("rect",{x:tx,y:ay-13,width:tw,height:26,rx:13,class:"tv-avgpill"}));
-  var tt=sv("text",{x:tx+tw/2,y:ay+5,"text-anchor":"middle",class:"tv-avgtxt"});tt.textContent=at;s.appendChild(tt);
+  var tt=sv("text",{x:tx+tw/2,y:ay+5,"text-anchor":"middle",class:"tv-avgtxt"});tt.textContent=at;s.appendChild(tt);}
   // x labels
   for(var q=0;q<5;q++){var qi=Math.round((n-1)*q/4),tx2=X(qi);
     var xt=sv("text",{x:q===0?x0:q===4?x1:tx2,y:H-8,"text-anchor":q===0?"start":q===4?"end":"middle",class:"tv-xlab"});
-    xt.textContent=n>200?pday(days[qi].date).toLocaleDateString(undefined,{month:"short"}):dshort(days[qi].date);s.appendChild(xt);}
+    xt.textContent=dshort(days[qi].date);s.appendChild(xt);}
   // scrubbing
   var guide=sv("line",{y1:y0-6,y2:y1,class:"tv-guide"});guide.style.display="none";
   var halo=sv("circle",{r:11,opacity:.22});halo.style.display="none";
@@ -2914,7 +3028,7 @@ function drawTrendChart(host,key,days,pts,showDay,lastP){
     var box=s.getBoundingClientRect(),rx=(clientX-box.left)/box.width*W,best=null,bd=1e9;
     days.forEach(function(p,i){if(p.v===null)return;var dd=Math.abs(X(i)-rx);if(dd<bd){bd=dd;best=i;}});
     if(best===null)return;
-    var p=days[best],c=B?bandCol(B,p.v):"var(--acc)";
+    var p=days[best],c=bio?bcol:B?bandCol(B,p.v):"var(--acc)";
     guide.setAttribute("x1",X(best));guide.setAttribute("x2",X(best));guide.style.display="";
     [halo,ring,dot].forEach(function(o){o.setAttribute("cx",X(best));o.setAttribute("cy",Y(p.v));o.style.display="";});
     halo.setAttribute("fill",c);dot.setAttribute("fill",c);
@@ -2938,7 +3052,7 @@ function trendsAnalysis(key){
   var end=ld||TV.end,g=goodDir(key);
   [3,7,14,30,90].forEach(function(N){
     var row=el("div","tv-tr");row.appendChild(el("div","p",N+"-day"));
-    var a=roll7(key,end),b=roll7(key,addDays(end,-N));
+    var a=M[key].at?dayVal(key,end):roll7(key,end),b=M[key].at?dayVal(key,addDays(end,-N)):roll7(key,addDays(end,-N));
     var ch=el("div","c"),tr=el("div","t");
     if(a===null||b===null){ch.textContent="—";ch.style.color="var(--ink4)";}
     else{
@@ -2946,7 +3060,7 @@ function trendsAnalysis(key){
       var col=zero?"var(--ta-flat)":(g==="low"?(up?"var(--ta-bad)":"var(--ta-good)"):g==="high"?(up?"var(--ta-good)":"var(--ta-bad)"):"var(--ta-good)");
       var ic=el("span","ar");ic.style.background=col;ic.innerHTML=zero?ICO2.arR:up?ICO2.arU:ICO2.arD;
       ch.appendChild(ic);ch.appendChild(document.createTextNode(deltaTxt(m,zero?0:dlt)));
-      var ser=[];for(var k=N;k>=0;k--){var r=roll7(key,addDays(end,-k));if(r!==null)ser.push(r);}
+      var ser=[];for(var k=N;k>=0;k--){var r=M[key].at?dayVal(key,addDays(end,-k)):roll7(key,addDays(end,-k));if(r!==null)ser.push(r);}
       tr.appendChild(miniSpark(ser,col));
     }
     row.appendChild(ch);row.appendChild(tr);card.appendChild(row);
@@ -3338,35 +3452,27 @@ function openHsMetric(k){
     closeBtn(h);
   });
 }
-var BIOMARKERS=["weight","bodyFat","hrvSleep","hrSleep","vo2max","asleepMin"];
-var BIONAME={weight:"Weight",bodyFat:"Body Fat",hrvSleep:"HRV Baselines",hrSleep:"RHR Baselines",vo2max:"VO₂ Max",asleepMin:"Sleep Baselines"};
+var BIOMARKERS=["weight","bodyFat","hrvBase","rhrBase","vo2max","sleepBase"];
+var BIONAME={weight:"Weight",bodyFat:"Body Fat",hrvBase:"HRV Baselines",rhrBase:"RHR Baselines",vo2max:"VO₂ Max",sleepBase:"Sleep Baselines"};
 function renderBiomarkers(){
-  var host=$("bmList");host.innerHTML="";var any=false;
+  var host=$("bmList");host.innerHTML="";var any=false,end=viewDateStr();
   BIOMARKERS.forEach(function(k){
-    var m=M[k],s=seriesOf(k,90);if(!s.length)return;any=true;
-    var st=statusOfMetric(k);
+    var m=M[k],ld=lastDataDate(k,end);if(!ld)return;any=true;
+    var v=dayVal(k,ld),st=bioStatus(k,ld,v);
     var b=el("button","trow");b.type="button";
     var l=el("div","l");
-    var nm=el("div");nm.style.cssText="font-size:17px;font-weight:650;letter-spacing:-.02em";
-    nm.textContent=BIONAME[k]||m.n;l.appendChild(nm);
-    var meta=el("div");meta.style.cssText="display:flex;align-items:center;gap:7px;margin-top:5px;font-size:15px";
-    var trend=el("span");trend.style.cssText="display:inline-flex;align-items:center;gap:5px;font-weight:600";
-    var dir=st.dir||"flat";
-    trend.innerHTML=dir==="up"?ICO.up:dir==="down"?ICO.down:ICO.flat;
-    trend.firstChild.style.width="16px";trend.firstChild.style.height="16px";
-    var good=m.better==="high"?dir==="up":m.better==="low"?dir==="down":null;
-    trend.style.color=st.cls==="warn"?"var(--warn)":good===true?"var(--info)":"var(--ink2)";
-    trend.appendChild(document.createTextNode(st.cls==="warn"?"Poor":dir==="up"?"Increasing":dir==="down"?"Decreasing":"Steady"));
-    meta.appendChild(trend);
-    var dot=el("span",null,"·");dot.style.color="var(--ink4)";meta.appendChild(dot);
-    var val=el("span");val.style.cssText="font-weight:620;letter-spacing:-.02em";
-    var LATEST={weight:1,vo2max:1,bodyFat:1};
-    var shown=LATEST[k]?s[s.length-1].v:mean(s.slice(-14).map(function(d){return d.v;}));
-    val.textContent=String(m.fmt(shown))+(unitOf(m)?" "+unitOf(m):"");
-    meta.appendChild(val);l.appendChild(meta);
+    var kk=el("div","k");kk.innerHTML=ICO[m.i];kk.appendChild(el("span",null,BIONAME[k]||m.n));l.appendChild(kk);
+    var vv=el("div","v");vv.appendChild(document.createTextNode(String(m.fmt(v))));
+    if(unitOf(m)){vv.appendChild(el("span","u",unitOf(m)));}
+    l.appendChild(vv);
+    var se=el("div","s");se.style.color=st.col;
+    if(st.dir){var ic=el("span","tv-sti");ic.innerHTML=st.dir==="up"?ICO2.arU:ICO2.arD;ic.style.background=st.col;se.appendChild(ic);}
+    se.appendChild(document.createTextNode(st.word));l.appendChild(se);
     b.appendChild(l);
-    var sp=el("div","sp");sp.appendChild(sparkline(s.slice(-30),m.c,132,56,false));b.appendChild(sp);
-    b.addEventListener("click",function(){openTrend(k,BIOMARKERS);});
+    var sp=el("div","sp");sp.appendChild(bioSpark(k,ld,st));b.appendChild(sp);
+    var ar=sv("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2.4","stroke-linecap":"round","stroke-linejoin":"round",class:"arrow"});
+    ar.appendChild(sv("path",{d:"M5 12h14M13 6l6 6-6 6"}));b.appendChild(ar);
+    b.addEventListener("click",function(){openTrend(k);});
     host.appendChild(b);
   });
   if(!any){var c=el("div","card");
@@ -3381,6 +3487,24 @@ function renderBiomarkers(){
      has(e.respRate)?Number(e.respRate).toFixed(1):"–"].forEach(function(v){tr.appendChild(el("td",null,v));});
     tb.appendChild(tr);
   });
+}
+// the little chart on a Biology card: last 30 days, shaded underneath, joined across gaps
+function bioSpark(key,end,st){
+  var R=bioRange(key),days=dayVals(key,addDays(end,-29),end),pts=[];
+  days.forEach(function(d,i){if(d.v!==null)pts.push([i,d.v]);});
+  var col=R?catCol(R.names[rangeIdx(R.cuts,pts[pts.length-1][1])]):"var(--ink)";
+  var W=132,H=56,s=sv("svg",{viewBox:"0 0 "+W+" "+H,preserveAspectRatio:"none",class:"rspark"});
+  var v=pts.map(function(p){return p[1];}),lo=Math.min.apply(null,v),hi=Math.max.apply(null,v);if(hi===lo){lo-=1;hi+=1;}
+  var X=function(i){return 4+(W-14)*i/29;},Y=function(x){return 5+(H-12)*(1-(x-lo)/(hi-lo));};
+  var gid="bs"+(++gradSeq),defs=sv("defs"),lg=sv("linearGradient",{id:gid,x1:0,x2:0,y1:0,y2:1});
+  lg.appendChild(sv("stop",{offset:0,"stop-color":col,"stop-opacity":.22}));lg.appendChild(sv("stop",{offset:1,"stop-color":col,"stop-opacity":0}));defs.appendChild(lg);s.appendChild(defs);
+  var line=pts.map(function(p){return X(p[0]).toFixed(1)+","+Y(p[1]).toFixed(1);});
+  if(pts.length>1)s.appendChild(sv("path",{d:"M"+line.join(" L")+" L"+X(pts[pts.length-1][0])+","+H+" L"+X(pts[0][0])+","+H+" Z",fill:"url(#"+gid+")"}));
+  s.appendChild(sv("path",{d:"M"+line.join(" L"),fill:"none",stroke:col,"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"}));
+  var lp=pts[pts.length-1];
+  s.appendChild(sv("circle",{cx:X(lp[0]),cy:Y(lp[1]),r:6.5,fill:col,opacity:.22}));
+  s.appendChild(sv("circle",{cx:X(lp[0]),cy:Y(lp[1]),r:3.6,fill:col}));
+  return s;
 }
 /* ======================= DATE PICKER (calendar) ======================= */
 var CAL_METRICS=[
@@ -3959,7 +4083,7 @@ function openCoach(){
 }
 
 /* ======================= SETTINGS / BACKUP ======================= */
-var APP_BUILD=5,APP_VER="Oct 29 · build 5";
+var APP_BUILD=6,APP_VER="Oct 29 · build 6";
 /* Self-update: phones keep an old copy of this page (Safari tabs, the browser cache). On every open,
    fetch the live file from GitHub, skipping all caches; if it has a newer build number, reload into it.
    Your data lives in this browser's storage, not in the page, so nothing is lost. */
@@ -4151,7 +4275,7 @@ if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)");
 window.bevelLocal={state:S,sleep:sleepScore,recovery:recoveryScore,strain:strainScore,stress:stressScore,
   energy:energyBank,target:targetStrain,hrDip:hrDip,sleepBank:sleepBank,entry:entryFor,baseline:baseline,
   view:function(d){S.viewDate=d||null;renderAll();},detail:function(k){openDetail(k);},
-  whoopAge:whoopAge,healthspan:healthspanMetrics,sleepConsistency:sleepConsistencyDay,nightLow:nightLow,labs:function(){return S.labs;}};
+  whoopAge:whoopAge,dayVal:dayVal,healthspan:healthspanMetrics,sleepConsistency:sleepConsistencyDay,nightLow:nightLow,labs:function(){return S.labs;}};
 })();
 </script>
 </body>
