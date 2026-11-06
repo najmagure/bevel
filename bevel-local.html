@@ -514,6 +514,9 @@
   .tv-rt{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-top:18px}
   .tv-rs{font-size:16px;color:var(--ink2);font-weight:500;margin-top:4px}
   .tv-rl{font-size:15.5px;color:var(--ink4);margin-top:8px}
+  details.calmore{margin:4px 0 12px;border-top:1px solid var(--hair);padding-top:10px}
+  details.calmore summary{cursor:pointer;font-size:15px;font-weight:600;color:var(--ink2);padding:6px 0}
+  .calf.hl input{border-color:var(--st-good);box-shadow:0 0 0 3px rgba(105,154,248,.18)}
 </style>
 </head>
 <body>
@@ -756,7 +759,7 @@ function primaryOf(e){
     e.sessions.reduce(function(a,b){return b.asleep>a.asleep?b:a;});
 }
 function spanOf(s){return has(s.span)?s.span:(s.e&&s.s?(s.e-s.s)/60000:s.asleep);}
-function sessionScore(s){
+function sessionFeats(s){
   if(!s||!(s.asleep>0))return null;
   var need=S.settings.sleepNeedMin||481;
   var staged=(s.rem||0)+(s.deep||0)+(s.core||0)>0;
@@ -764,9 +767,23 @@ function sessionScore(s){
   var deepP=staged?(s.deep||0)/s.asleep*100:15, remP=staged?(s.rem||0)/s.asleep*100:20;
   var eff=s.asleep/Math.max(spanOf(s),s.asleep);
   var dur=Math.min(1,s.asleep/need);
-  // fitted to 71 of your Bevel Sleep Scores (Jul 31 – Oct 29): typically within 3 points
-  var v=-121.615+110.267*dur+1.167*deepP+0.879*remP+62.687*eff;
-  return {value:Math.round(clamp(v,1,100)),dur:dur,deepP:deepP,remP:remP,eff:eff,staged:staged};
+  return {dur:dur,deepP:deepP,remP:remP,eff:eff,staged:staged,x:[1,dur,deepP,remP,eff]};
+}
+// fitted to 71 of your Bevel Sleep Scores (Jul 31 – Oct 29): typically within 3 points.
+// Days you calibrate (menu → Calibrate to Bevel) adjust these in your browser.
+var SLP0=[-121.615,110.267,1.167,0.879,62.687];
+function sleepW(){return SLP0;}
+function dot(w,x){var t=0;for(var i=0;i<w.length;i++)t+=w[i]*x[i];return t;}
+function sessionScore(s){
+  var f=sessionFeats(s);if(!f)return null;
+  f.raw=clamp(dot(sleepW(),f.x),1,100);f.value=Math.round(clamp(calApply("sleepScore",f.raw),1,100));return f;
+}
+function sleepFeatsOf(e){
+  if(!e)return null;
+  var p=primaryOf(e);
+  if(!p){if(!has(e.asleepMin)||e.asleepMin<=0)return null;
+    p={asleep:e.asleepMin,rem:e.remMin||0,deep:e.deepMin||0,core:e.coreMin||0,span:e.inBedMin||e.asleepMin};}
+  return sessionFeats(p);
 }
 function sleepScore(e){
   if(!e)return null;
@@ -842,26 +859,332 @@ function baseTrim(field,date){
   });
 }
 function zOf(field,date,v){var b=baseTrim(field,date);if(!b||!has(v))return null;return b.sd>0?(v-b.mean)/b.sd:0;}
-function recoveryScore(e){
+function recFeats(e){
   if(!e)return null;
   var exact=has(e.hrvSleep);
   if(!exact&&!has(e.hrvSDNN))return null;
-  return memo("rc|"+e.date,function(){
-    var W=exact?RC:RCS,hf=exact?"hrvSleep":"hrvSDNN",hv=Number(e[hf]);
+  return memo("rf|"+e.date,function(){
+    var hf=exact?"hrvSleep":"hrvSDNN",hv=Number(e[hf]);
     var zh=zOf(hf,e.date,hv);if(zh===null)return null;
     var zr=has(e.hrSleep)?zOf("hrSleep",e.date,Number(e.hrSleep)):null,zq=has(e.respRate)?zOf("respRate",e.date,Number(e.respRate)):null;
     var sl=sleepScore(e),sv2=sl?sl.value:null;
     if(sv2===null){var sb=[];for(var k=1;k<=30;k++){var x=entryFor(addDays(e.date,-k)),q=x?sleepScore(x):null;if(q)sb.push(q.value);}sv2=sb.length?mean(sb):60;}
     var ph=ncdf(zh),pr=zr===null?0.5:ncdf(-zr),pq=zq===null?0.5:ncdf(-zq);
-    var v=W.c+W.h*ph+W.r*pr+W.q*pq+W.s*sv2;
-    var hb=baseTrim(hf,e.date),rb=baseTrim("hrSleep",e.date),qb=baseTrim("respRate",e.date);
+    return {exact:exact,hf:hf,hv:hv,zr:zr,zq:zq,ph:ph,pr:pr,pq:pq,sv:sv2,x:[1,ph,pr,pq,sv2]};
+  });
+}
+function recW(exact){var W=exact?RC:RCS;return [W.c,W.h,W.r,W.q,W.s];}
+function recoveryScore(e){
+  if(!e)return null;
+  return memo("rc|"+e.date,function(){
+    var f=recFeats(e);if(!f)return null;
+    var cal=calLinFit("recoveryScore"),v=calApply("recoveryScore",clamp(dot(recW(f.exact),f.x),1,99));
+    var hb=baseTrim(f.hf,e.date),rb=baseTrim("hrSleep",e.date),qb=baseTrim("respRate",e.date);
     function pct(p){return Math.round(p*100)+"th percentile";}
-    var parts=[{k:exact?"HRV vs your 60 days":"HRV (Apple's reading, from the Shortcut) vs your 60 days",v:hv.toFixed(1)+" vs "+hb.mean.toFixed(1)+" ms · "+pct(ph)}];
-    if(zr!==null)parts.push({k:"Resting HR vs your 60 days",v:Number(e.hrSleep).toFixed(1)+" vs "+rb.mean.toFixed(1)+" bpm · "+pct(pr)});
-    if(zq!==null)parts.push({k:"Respiratory rate vs your 60 days",v:Number(e.respRate).toFixed(1)+" vs "+qb.mean.toFixed(1)+" rpm · "+pct(pq)});
-    parts.push({k:"Sleep Score",v:Math.round(sv2)+"%"});
-    if(!exact)parts.push({k:"Precision",v:"About ±5 until your next full export"});
-    return {value:Math.round(clamp(v,1,99)),parts:parts,estimated:!exact,hrvShown:exact?hv:hrvOf(e),hb:hb,rb:rb,qb:qb};
+    var parts=[{k:f.exact?"HRV vs your 60 days":"HRV (Apple's reading, from the Shortcut) vs your 60 days",v:f.hv.toFixed(1)+" vs "+hb.mean.toFixed(1)+" ms · "+pct(f.ph)}];
+    if(f.zr!==null)parts.push({k:"Resting HR vs your 60 days",v:Number(e.hrSleep).toFixed(1)+" vs "+rb.mean.toFixed(1)+" bpm · "+pct(f.pr)});
+    if(f.zq!==null)parts.push({k:"Respiratory rate vs your 60 days",v:Number(e.respRate).toFixed(1)+" vs "+qb.mean.toFixed(1)+" rpm · "+pct(f.pq)});
+    parts.push({k:"Sleep Score",v:Math.round(f.sv)+"%"});
+    if(cal)parts.push({k:"Calibrated",v:"to "+cal.n+" of your Bevel day"+(cal.n===1?"":"s")});
+    if(!f.exact)parts.push({k:"Precision",v:"About ±5 until your next full export"});
+    return {value:Math.round(clamp(v,1,99)),parts:parts,estimated:!f.exact,hrvShown:f.exact?f.hv:hrvOf(e),hb:hb,rb:rb,qb:qb};
+  });
+}
+
+/* ======================= CALIBRATE TO BEVEL =======================
+   You type the Recovery and Sleep scores Bevel shows for a day; the formulas re-fit to them here in
+   your browser. It's a Bayesian ridge fit: the built-in weights (fitted to ~100 of your Bevel days)
+   are the starting point, and each day you add pulls them toward Bevel a little — one odd day
+   barely moves anything, but a steady gap over a week or two is corrected. Recent days count most
+   (half-weight after 4 months), so it follows Bevel if Bevel changes. */
+K.calib="bevelLocal_calib_v1";
+S.calib=ld(K.calib,null)||{};
+["rec","sleep","m","energy"].forEach(function(k){if(!S.calib[k]||typeof S.calib[k]!=="object")S.calib[k]={};});
+function saveC(){sd(K.calib,S.calib);}
+var CAL_NOISE=3;   // how far a single Bevel day typically sits from any formula (points)
+function solve(A,b){   // Gaussian elimination with partial pivoting
+  var n=b.length,M2=A.map(function(r,i){return r.concat([b[i]]);});
+  for(var c=0;c<n;c++){var pv=c;for(var r=c+1;r<n;r++)if(Math.abs(M2[r][c])>Math.abs(M2[pv][c]))pv=r;
+    var t=M2[c];M2[c]=M2[pv];M2[pv]=t;if(Math.abs(M2[c][c])<1e-12)return null;
+    for(r=c+1;r<n;r++){var f=M2[r][c]/M2[c][c];for(var k=c;k<=n;k++)M2[r][k]-=f*M2[c][k];}}
+  var x=new Array(n);
+  for(var i=n-1;i>=0;i--){var sm=M2[i][n];for(var j=i+1;j<n;j++)sm-=M2[i][j]*x[j];x[i]=sm/M2[i][i];}
+  return x;
+}
+/* ---- Recovery, Sleep and most measures: Bevel ≈ a + b × this site, a Bayesian fit that starts at a=0, b=1.
+   Tested on your own Bevel days: if nothing has drifted it costs almost nothing (2.25 → ~2.3 points),
+   and if Bevel shifts by 8 points it's corrected within 3–7 entered days. Recovery and Sleep only move
+   the offset, since their shape is already fitted to ~100 of your days.
+   Stress and Energy Bank re-fit their own model settings instead, so the chart, highs and lows move too. ---- */
+var CAL_INTERNAL={recoveryScore:1,sleepScore:1,stressScore:1,strainScore:1};
+function rawVal(k,ds){
+  var e=entryFor(ds);
+  if(k==="strainScore"){if(!e)return null;var t=trimpOf(e);return t?strainFromTrimp(t.T):null;}
+  if(k==="recoveryScore"){var rf=e?recFeats(e):null;return rf?clamp(dot(recW(rf.exact),rf.x),1,99):null;}
+  if(k==="sleepScore"){var sf=e?sleepFeatsOf(e):null;return sf?clamp(dot(SLP0,sf.x),1,100):null;}
+  var m=M[k];if(!m)return null;
+  if(m.rawAt){var a=m.rawAt(ds);return a===null||a===undefined||!isFinite(a)?null:Number(a);}
+  if(!e)return null;var g=(m.rawGet||m.get)(e);return g===null||g===undefined||!isFinite(g)?null:Number(g);
+}
+function calLinFit(k){
+  return memo("cl|"+k,function(){
+    var src=calStore(k);var rows=[],td=dnum(today());
+    Object.keys(src).forEach(function(d){var y=Number(src[d]),x=rawVal(k,d);if(x===null||!isFinite(y))return;rows.push({d:d,x:x,y:y});});
+    if(!rows.length)return null;
+    // how far one Bevel day typically sits from the site, by kind of number
+    var f0=calField(k)||{kind:"num"},kd=f0.kind,mu=mean(rows.map(function(r){return (Math.abs(r.x)+Math.abs(r.y))/2;}))||1;
+    var sig=kd==="clock"?10:kd==="dur"||kd==="sdur"?15:kd==="pct"?3:Math.max(0.05*mu,0.5);
+    var sdA=kd==="clock"?60:kd==="dur"||kd==="sdur"?20:kd==="pct"?4:0.06*mu+0.5,sdB=kd==="clock"?0.001:0.1;
+    if(k==="recoveryScore"||k==="sleepScore")sdB=0.02;
+    if(k==="strainScore"){sig=4;sdA=8;sdB=0.15;}   // this site's Strain is deliberately stricter, so allow a real rescale
+    var A=[[1/(sdA*sdA),0],[0,1/(sdB*sdB)]],bb=[0,1/(sdB*sdB)];
+    rows.forEach(function(r){var wt=Math.pow(0.5,Math.max(0,td-dnum(r.d))/120)/(sig*sig),x=[1,r.x];
+      for(var i=0;i<2;i++){bb[i]+=wt*x[i]*r.y;for(var j=0;j<2;j++)A[i][j]+=wt*x[i]*x[j];}});
+    var w=solve(A,bb);if(!w||!isFinite(w[0])||!isFinite(w[1]))return null;
+    var f={a:w[0],b:w[1],n:rows.length};
+    var rd=calField(k)&&calField(k).kind==="pct"?Math.round:function(v){return v;};
+    f.before=mean(rows.map(function(r){return Math.abs(rd(r.x)-r.y);}));
+    f.after=mean(rows.map(function(r){return Math.abs(rd(calLimit(k,f.a+f.b*r.x,r.x))-r.y);}));
+    return f;
+  });
+}
+function calLimit(k,r,v){var m=M[k];
+  if(k==="recoveryScore")return clamp(r,1,99);
+  if(k==="strainScore"||(m&&unitOf(m)==="%"))return clamp(r,0,100);
+  if(v>=0&&k!=="sleepBank")return Math.max(0,r);return r;}
+function calApply(k,v){var f=calLinFit(k);return f?calLimit(k,f.a+f.b*v,v):v;}
+function calSlope(k){var f=calLinFit(k);return f?f.b:1;}
+
+/* ---- Stress: re-fit the two settings behind every 5-minute reading ---- */
+function stressFit(){
+  return memo("cal|stress",function(){
+    var src=S.calib.m.stressScore;if(!src)return null;var rows=[],td=dnum(today());
+    Object.keys(src).forEach(function(d){var e=entryFor(d),H=e?stressHR(e):null,y=Number(src[d]);
+      if(H&&isFinite(y))rows.push({d:d,H:H,y:y,wt:Math.pow(0.5,Math.max(0,td-dnum(d))/120)});});
+    if(!rows.length)return null;
+    function sc(H,a,b){var t=0;for(var i=0;i<H.slots.length;i++)t+=clamp(a*100*(H.slots[i].h/H.ref-1)+b,0,100);return t/H.slots.length;}
+    var best=null;
+    for(var a=0.4;a<=2.201;a+=0.05)for(var b=0;b<=45;b+=1){
+      var L=Math.pow((a-SW.a)/0.35,2)+Math.pow((b-SW.b)/8,2);
+      rows.forEach(function(r){L+=r.wt*Math.pow((sc(r.H,a,b)-r.y)/3,2);});
+      if(!best||L<best.L)best={L:L,a:a,b:b};}
+    return {a:best.a,b:best.b,n:rows.length,
+      before:mean(rows.map(function(r){return Math.abs(Math.round(sc(r.H,SW.a,SW.b))-r.y);})),
+      after:mean(rows.map(function(r){return Math.abs(Math.round(sc(r.H,best.a,best.b))-r.y);}))};
+  });
+}
+function swP(){var f=stressFit();return f?{a:f.a,b:f.b}:{a:SW.a,b:SW.b};}
+
+/* ---- Energy Bank: re-fit how fast sleep charges it and waking hours drain it ---- */
+function energyFit(){
+  return memo("cal|energy",function(){
+    var src=S.calib.energy,ds=Object.keys(src).filter(function(d){return entryFor(d)&&isFinite(Number(src[d].v));}).sort();
+    if(!ds.length)return null;
+    var from=addDays(ds[0],-14),td=dnum(today());
+    function pred(kc,kd){var T=energyTracks({kc:kc,kd:kd,from:from});
+      return ds.map(function(d){var tr=T[d];if(!tr)return null;var v=tr.series[Math.min(95,Math.floor((src[d].min||0)/15))];
+        return v===null||v===undefined?tr.end:v;});}
+    function loss(p,kc,kd){var L=Math.pow((kc-1)/0.3,2)+Math.pow((kd-1)/0.3,2);
+      ds.forEach(function(d,i){if(p[i]===null)return;L+=Math.pow(0.5,Math.max(0,td-dnum(d))/120)*Math.pow((p[i]-Number(src[d].v))/6,2);});return L;}
+    var best=null;
+    for(var kc=0.5;kc<=1.81;kc+=0.1)for(var kd=0.5;kd<=1.81;kd+=0.1){var L=loss(pred(kc,kd),kc,kd);if(!best||L<best.L)best={L:L,kc:kc,kd:kd};}
+    var c0=best.kc,d0=best.kd;
+    for(kc=c0-0.08;kc<=c0+0.081;kc+=0.04)for(kd=d0-0.08;kd<=d0+0.081;kd+=0.04){L=loss(pred(kc,kd),kc,kd);if(L<best.L)best={L:L,kc:kc,kd:kd};}
+    var p0=pred(1,1),p1=pred(best.kc,best.kd),bef=[],aft=[];
+    ds.forEach(function(d,i){if(p0[i]===null)return;bef.push(Math.abs(Math.round(p0[i])-Number(src[d].v)));aft.push(Math.abs(Math.round(p1[i])-Number(src[d].v)));});
+    if(!bef.length)return null;
+    return {kc:best.kc,kd:best.kd,n:bef.length,before:mean(bef),after:mean(aft)};
+  });
+}
+function energyParams(){var f=energyFit();return f?{kc:f.kc,kd:f.kd}:{kc:1,kd:1};}
+
+/* ---- the Calibrate sheet ---- */
+var CAL_FIELDS=[
+  {g:"Scores",k:"recoveryScore",n:"Recovery",kind:"pct"},
+  {g:"Scores",k:"sleepScore",n:"Sleep Score",kind:"pct"},
+  {g:"Scores",k:"strainScore",n:"Strain",kind:"pct"},
+  {g:"Scores",k:"stressScore",n:"Stress",kind:"num"},
+  {g:"Scores",k:"energy",n:"Energy Bank",kind:"pct"},
+  {g:"Recovery",k:"hrvSleep",n:"Resting HRV",kind:"num",u:"ms"},
+  {g:"Recovery",k:"hrSleep",n:"Resting HR",kind:"num",u:"bpm"},
+  {g:"Recovery",k:"respRate",n:"Respiratory Rate",kind:"num",u:"rpm"},
+  {g:"Sleep",k:"asleepMin",n:"Time Asleep",kind:"dur"},
+  {g:"Sleep",k:"remMin",n:"REM Sleep",kind:"dur"},
+  {g:"Sleep",k:"deepMin",n:"Deep Sleep",kind:"dur"},
+  {g:"Sleep",k:"hrDip",n:"Heart Rate Dip",kind:"pct"},
+  {g:"Sleep",k:"sleepBank",n:"Sleep Bank",kind:"sdur"},
+  {g:"Sleep",k:"sleepTime",n:"Sleep Time",kind:"clock"},
+  {g:"Sleep",k:"wakeTime",n:"Wake Time",kind:"clock"},
+  {g:"Strain",k:"exerciseMin",n:"Exercise Duration",kind:"dur"},
+  {g:"Strain",k:"hrDay",n:"Daytime HR",kind:"num",u:"bpm"},
+  {g:"Strain",k:"totalKJ",n:"Total Energy",kind:"num",u:"kcal"},
+  {g:"Strain",k:"steps",n:"Step Count",kind:"num"},
+  {g:"Stress",k:"nonActStress",n:"Non-Activity Stress",kind:"num"},
+  {g:"Stress",k:"sleepStress",n:"Sleep Stress",kind:"num"},
+  {g:"Biology",k:"hrvBase",n:"HRV Baselines",kind:"num",u:"ms"},
+  {g:"Biology",k:"rhrBase",n:"RHR Baselines",kind:"num",u:"bpm"},
+  {g:"Biology",k:"sleepBase",n:"Sleep Baselines",kind:"dur"},
+  {g:"Biology",k:"vo2max",n:"VO₂ Max",kind:"num"},
+  {g:"Biology",k:"weight",n:"Weight",kind:"num",u:"wt"},
+  {g:"Biology",k:"bodyFat",n:"Body Fat",kind:"num",u:"%"}
+];
+function calField(k){for(var i=0;i<CAL_FIELDS.length;i++)if(CAL_FIELDS[i].k===k)return CAL_FIELDS[i];return null;}
+function calStore(k,make){if(k==="recoveryScore")return S.calib.rec;if(k==="sleepScore")return S.calib.sleep;if(k==="energy")return S.calib.energy;
+  if(!S.calib.m[k]){if(!make)return {};S.calib.m[k]={};}return S.calib.m[k];}
+function calSaved(k,d){var st=calStore(k),v=st[d];if(v===undefined||v===null)return null;return k==="energy"?v:Number(v);}
+function calUnit(f){return f.u==="wt"?S.settings.weightUnit:f.u||"";}
+function calFmt(f,v){
+  if(v===null||v===undefined||!isFinite(v))return "—";
+  if(f.kind==="dur")return hm(Math.max(0,v))||"0m";
+  if(f.kind==="sdur")return (v<0?"−":"")+(hm(Math.abs(v))||"0m");
+  if(f.kind==="clock")return todLabel(((Math.round(v)%1440)+1440)%1440);
+  var u=calUnit(f),n=Math.abs(v)>=1000?Math.round(v).toLocaleString():Math.abs(v-Math.round(v))<0.05?String(Math.round(v)):v.toFixed(1);
+  return n+(f.kind==="pct"?"%":u?" "+u:"");
+}
+function calParse(f,t){
+  t=String(t||"").trim().replace(/−/g,"-");if(!t)return {empty:true};
+  if(f.kind==="dur"||f.kind==="sdur"){
+    var neg=/^-/.test(t);t=t.replace(/^[-+]\s*/,"");var m,v=null;
+    if((m=/^(\d+(?:\.\d+)?)\s*h(?:\s*(\d+)\s*m?)?$/i.exec(t)))v=Number(m[1])*60+Number(m[2]||0);
+    else if((m=/^(\d+):(\d{1,2})$/.exec(t)))v=Number(m[1])*60+Number(m[2]);
+    else if((m=/^(\d+)\s*m(in)?$/i.exec(t)))v=Number(m[1]);
+    else if(/^\d+(\.\d+)?$/.test(t))v=Number(t)<=24&&/\./.test(t)?Number(t)*60:Number(t);
+    if(v===null)return {err:"Type it like 7h 32m"};
+    if(neg&&f.kind==="dur")return {err:"Can't be negative"};
+    return {v:neg?-v:v};
+  }
+  if(f.kind==="clock"){
+    var c=/^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?$/i.exec(t.replace(/\./g,""));if(!c)return {err:"Type it like 10:22 PM"};
+    var h=Number(c[1]),mi=Number(c[2]||0),ap=(c[3]||"").toLowerCase();
+    if(ap){if(h<1||h>12)return {err:"Type it like 10:22 PM"};h=h%12+(ap[0]==="p"?12:0);}
+    if(h>23||mi>59)return {err:"Type it like 10:22 PM"};
+    var mm=h*60+mi;if(f.k==="sleepTime"&&mm<720)mm+=1440;return {v:mm};
+  }
+  var n=Number(t.replace(/,/g,"").replace(/[^0-9.\-]/g,""));
+  if(!isFinite(n)||t.replace(/[^0-9]/g,"")==="")return {err:"Type a number"};
+  if(f.kind==="pct"&&(n<0||n>100))return {err:"Goes from 0 to 100"};
+  if(f.k!=="sleepBank"&&n<0)return {err:"Can't be negative"};
+  return {v:n};
+}
+function calSite(f,d,min){
+  var e=entryFor(d);
+  if(f.k==="recoveryScore"){var r=e?recoveryScore(e):null;return r?r.value:null;}
+  if(f.k==="sleepScore"){var q=e?sleepScore(e):null;return q?q.value:null;}
+  if(f.k==="strainScore"){var t=e?strainScore(e):null;return t?t.value:null;}
+  if(f.k==="stressScore"){var x=e?stressScore(e):null;return x?x.value:null;}
+  if(f.k==="energy"){var tr=energyTracks()[d];if(!tr)return null;var v=tr.series[Math.min(95,Math.floor((min||0)/15))];return Math.round(v===null||v===undefined?tr.end:v);}
+  return dayVal(f.k,d);
+}
+function calGap(k){
+  if(k==="stressScore")return stressFit();
+  if(k==="energy")return energyFit();
+  return calLinFit(k);
+}
+function calGapTxt(f,g){
+  function one(x){if(f.kind==="dur"||f.kind==="sdur"||f.kind==="clock")return Math.round(x)+" min";
+    return (Math.abs(x)>=100?Math.round(x).toLocaleString():x.toFixed(1))+(f.kind==="pct"?" pts":calUnit(f)?" "+calUnit(f):"");}
+  return one(g.before)+" → "+one(g.after);
+}
+function nowMin(){var n=new Date();return n.getHours()*60+n.getMinutes();}
+function openCalibrate(ds,focus){
+  ds=ds||viewDateStr();
+  openSheet(function(h){
+    sheetTitle(h,"Calibrate to Bevel","Type in any numbers Bevel shows for a day, and leave the rest blank. The site adjusts to match: each day nudges it a little, and a steady difference over a week or two gets corrected. Recent days count most.");
+    var c=el("div","card");
+    var df=el("div","fld");df.appendChild(el("label",null,"Day"));
+    var di=el("input");di.type="date";di.max=today();di.value=ds;df.appendChild(di);c.appendChild(df);
+    var inputs=[],more=el("details","calmore"),lastG=null,box=c;
+    more.appendChild(el("summary",null,"All other measures"));
+    CAL_FIELDS.forEach(function(f){
+      if(f.g!=="Scores"){box=more;if(f.g!==lastG){var gh=el("div","stept",f.g);gh.style.margin="14px 0 8px";more.appendChild(gh);}}
+      lastG=f.g;
+      var fd=el("div","fld calf");fd.setAttribute("data-k",f.k);
+      fd.appendChild(el("label",null,f.n+(f.kind==="pct"||f.kind==="num"?(calUnit(f)?" ("+calUnit(f)+")":f.kind==="pct"?" (%)":""):"")));
+      var row=el("div");row.style.cssText="display:flex;gap:8px";
+      var inp=el("input");inp.type="text";inp.style.flex="1";
+      inp.setAttribute("inputmode",f.kind==="pct"||f.kind==="num"?"decimal":"text");inp.autocomplete="off";
+      inp.placeholder=f.kind==="dur"?"7h 32m":f.kind==="sdur"?"1h 2m or −30m":f.kind==="clock"?"10:22 PM":f.kind==="pct"?"e.g. 72":"";
+      row.appendChild(inp);
+      var tm=null;
+      if(f.k==="energy"){tm=el("input");tm.type="time";tm.style.cssText="width:auto;flex:0 0 auto";row.appendChild(tm);}
+      fd.appendChild(row);
+      var hint=el("div","hint");fd.appendChild(hint);
+      box.appendChild(fd);
+      inputs.push({f:f,inp:inp,tm:tm,hint:hint,fd:fd});
+    });
+    c.appendChild(more);
+    function fill(){
+      var d=di.value||today(),anyMore=false;
+      inputs.forEach(function(x){
+        var sv=calSaved(x.f.k,d);
+        if(x.f.k==="energy"){var mn=sv&&has(sv.min)?sv.min:(d===today()?nowMin():1439);
+          x.tm.value=pad2(Math.floor(mn/60))+":"+pad2(mn%60);x.inp.value=sv?String(sv.v):"";}
+        else x.inp.value=sv===null?"":x.f.kind==="pct"||x.f.kind==="num"?String(Math.round(sv*10)/10):calFmt(x.f,sv);
+        if(sv!==null&&x.f.g!=="Scores")anyMore=true;
+        var mn2=x.tm?(function(){var p=x.tm.value.split(":");return Number(p[0])*60+Number(p[1]||0);})():0;
+        var site=calSite(x.f,d,mn2);
+        x.hint.textContent=site===null?"This site has no value for that day.":"This site shows "+calFmt(x.f,site)+".";
+        x.hint.style.color="";
+      });
+      if(anyMore||(focus&&calField(focus)&&calField(focus).g!=="Scores"))more.open=true;
+    }
+    fill();di.addEventListener("change",function(){focus=null;fill();});
+    inputs.forEach(function(x){if(x.tm)x.tm.addEventListener("change",fill);});
+    var st=el("div");
+    var sv2=el("button","btn wide","Save");sv2.style.marginTop="6px";
+    sv2.addEventListener("click",function(){
+      var d=di.value||today(),bad=0,n=0,upd=[];
+      inputs.forEach(function(x){var r=calParse(x.f,x.inp.value);
+        if(r.err){bad++;x.hint.textContent=r.err;x.hint.style.color="var(--bad)";return;}
+        upd.push([x,r]);});
+      if(bad){st.className="stat err";st.textContent="Check the "+(bad===1?"field":"fields")+" in red.";return;}
+      upd.forEach(function(p){var x=p[0],r=p[1],store=calStore(x.f.k,!r.empty);
+        if(r.empty){delete store[d];return;}
+        if(x.f.k==="energy"){var q=x.tm.value.split(":");store[d]={v:r.v,min:Number(q[0])*60+Number(q[1]||0)};}
+        else store[d]=r.v;n++;});
+      Object.keys(S.calib.m).forEach(function(k){if(!Object.keys(S.calib.m[k]).length)delete S.calib.m[k];});
+      saveC();bust();renderAll();
+      openCalibrate(d,focus);
+      toast(n?"Saved "+n+" value"+(n===1?"":"s")+" for "+sdate(d)+".":"Cleared "+sdate(d)+".");
+    });
+    c.appendChild(sv2);c.appendChild(st);h.appendChild(c);
+
+    // how close it is now
+    var rows=CAL_FIELDS.map(function(f){return {f:f,g:calGap(f.k)};}).filter(function(x){return x.g&&x.g.n;});
+    h.appendChild(Object.assign(el("div","stept"),{textContent:"How close it is"}));
+    var kv=el("div","kv");
+    if(!rows.length){var r0=el("div","r");r0.appendChild(el("div","k","Nothing entered yet"));kv.appendChild(r0);}
+    rows.forEach(function(x){var r=el("div","r");r.appendChild(el("div","k",x.f.n+" · "+x.g.n+" day"+(x.g.n===1?"":"s")));
+      r.appendChild(el("div","v",calGapTxt(x.f,x.g)));kv.appendChild(r);});
+    h.appendChild(kv);
+    h.appendChild(el("div","disc","Average gap from Bevel on the days you've entered: before calibrating → now. A few days a week is plenty. Days the site has no data for are skipped."));
+
+    // the days you've entered
+    var all={};
+    CAL_FIELDS.forEach(function(f){Object.keys(calStore(f.k)).forEach(function(d){all[d]=(all[d]||0)+1;});});
+    var ds2=Object.keys(all).sort().reverse();
+    if(ds2.length){
+      h.appendChild(Object.assign(el("div","stept"),{textContent:"Days you've entered"}));
+      var kv2=el("div","kv");
+      ds2.slice(0,30).forEach(function(d){
+        var r=el("div","r");r.style.alignItems="center";
+        var k2=el("div","k",sdate(d));k2.style.cursor="pointer";k2.addEventListener("click",function(){openCalibrate(d);});r.appendChild(k2);
+        var vv=el("div","v",all[d]+" value"+(all[d]===1?"":"s"));vv.style.cursor="pointer";vv.addEventListener("click",function(){openCalibrate(d);});r.appendChild(vv);
+        var x=el("button",null,"×");x.setAttribute("aria-label","Remove this day");
+        x.style.cssText="border:none;background:none;color:var(--ink3);font-size:20px;cursor:pointer;padding:0 0 0 10px";
+        x.addEventListener("click",function(){CAL_FIELDS.forEach(function(f){delete calStore(f.k)[d];});saveC();bust();renderAll();openCalibrate(ds);});
+        r.appendChild(x);kv2.appendChild(r);
+      });
+      h.appendChild(kv2);
+      var rs=el("button","btn sec wide","Reset calibration");rs.style.color="var(--bad)";
+      rs.addEventListener("click",function(){
+        if(rs.dataset.sure!=="1"){rs.dataset.sure="1";rs.textContent="Tap again to remove all "+ds2.length+" days";return;}
+        S.calib={rec:{},sleep:{},m:{},energy:{}};saveC();bust();renderAll();openCalibrate(ds);toast("Calibration reset to the original formulas.");});
+      h.appendChild(rs);
+    }
+    closeBtn(h);
+    if(focus){var tgt=h.querySelector('.calf[data-k="'+focus+'"]');
+      if(tgt){tgt.classList.add("hl");setTimeout(function(){try{tgt.scrollIntoView({block:"center"});}catch(e){}},60);}}
   });
 }
 
@@ -895,7 +1218,7 @@ function strainScore(e){
   if(!e||(!e.zoneMin&&!e.hb))return null;
   return memo("sn|"+e.date,function(){
     var t=trimpOf(e);if(!t)return null;
-    var raw=strainFromTrimp(t.T),parts=[];
+    var raw=calApply("strainScore",strainFromTrimp(t.T)),parts=[];
     parts.push({k:"Resting HR used",v:Math.round(t.R)+" bpm (overnight low, 30 days)"});
     parts.push({k:"Counts from",v:Math.round(t.thr)+" bpm (30% of your reserve)"});
     parts.push({k:"Time above that",v:hm(t.min)||"0m"});
@@ -970,7 +1293,7 @@ function stressDay(e){
    sleep included, in 5-minute steps. Day stress = the average across that whole window.
    Fitted to your Bevel days (Aug 13, Sep 3–12) and Oct 4 (Stress 29 · Sleep 28 · Non-activity 32). */
 var SW={a:1.05,b:21,low:30,high:60};
-function slotStressW(hr,ref){return clamp(SW.a*100*(hr/ref-1)+SW.b,0,100);}
+function slotStressW(hr,ref){var P=swP();return clamp(P.a*100*(hr/ref-1)+P.b,0,100);}
 function hr5At(day,slot){   // heart rate in one 5-minute slot: exact 5-minute data, else the 15-minute average
   var x=entryFor(dstrN(day));if(!x)return 0;
   if(x.h5&&x.h5[slot]>0)return x.h5[slot];
@@ -993,9 +1316,9 @@ function workRuns5(dayFrom,dayTo){
   return out;
 }
 function inRuns(k,runs){for(var i=0;i<runs.length;i++)if(k>=runs[i][0]&&k<runs[i][1])return true;return false;}
-function stressWindow(e){
+function stressHR(e){
   if(!e)return null;
-  return memo("sw|"+e.date,function(){
+  return memo("sh|"+e.date,function(){
     var dn0=dnum(e.date),pri=primaryOf(e),k0,k1;
     if(pri&&has(pri.sw)&&has(pri.ew)){var eday=dn0-(pri.ew>=1080?1:0),sday=pri.sd?dnum(pri.sd):eday-(pri.sw>pri.ew?1:0);
       k0=sday*288+Math.floor(pri.sw/5);}
@@ -1009,16 +1332,25 @@ function stressWindow(e){
     var rb=baseline("hrSleep",e.date),ref=rb?rb.mean:(has(e.hrSleep)?Number(e.hrSleep):null);
     if(!ref||k1<=k0)return null;
     var sl=sleepRuns5(Math.floor(k0/288),Math.floor(k1/288)),wk=workRuns5(Math.floor(k0/288),Math.floor(k1/288));
-    var pts=[],all=[],slp=[],non=[],bands=[0,0,0];
+    var slots=[];
     for(var k=k0;k<k1;k++){
       var h=hr5At(Math.floor(k/288),k%288);if(!(h>0))continue;
-      var v=slotStressW(h,ref),asl=inRuns(k,sl),act=!asl&&inRuns(k,wk);
-      pts.push({k:k,v:v,sl:asl,act:act});all.push(v);
-      if(asl)slp.push(v);else if(!act)non.push(v);
-      bands[v<SW.low?0:v<SW.high?1:2]++;
+      var asl=inRuns(k,sl);slots.push({k:k,h:h,sl:asl,act:!asl&&inRuns(k,wk)});
     }
-    if(all.length<6)return null;
-    return {pts:pts,k0:k0,k1:k1,ref:ref,sleepRuns:sl,score:mean(all),sleep:slp.length>=6?mean(slp):null,
+    if(slots.length<6)return null;
+    return {k0:k0,k1:k1,ref:ref,sleepRuns:sl,slots:slots};
+  });
+}
+function stressWindow(e){
+  if(!e)return null;
+  return memo("sw|"+e.date,function(){
+    var H=stressHR(e);if(!H)return null;
+    var pts=[],all=[],slp=[],non=[],bands=[0,0,0];
+    H.slots.forEach(function(q){var v=slotStressW(q.h,H.ref);
+      pts.push({k:q.k,v:v,sl:q.sl,act:q.act});all.push(v);
+      if(q.sl)slp.push(v);else if(!q.act)non.push(v);
+      bands[v<SW.low?0:v<SW.high?1:2]++;});
+    return {pts:pts,k0:H.k0,k1:H.k1,ref:H.ref,sleepRuns:H.sleepRuns,score:mean(all),sleep:slp.length>=6?mean(slp):null,
       nonAct:non.length>=3?mean(non):null,hi:Math.max.apply(null,all),lo:Math.min.apply(null,all),
       bands:bands,n:all.length};
   });
@@ -1043,12 +1375,15 @@ var EB={rc:0.117,rr:0.247,g:0.718,b0:2.872,b1:4.618};
 function sessionCharge(s,date){var rest=(s.deep||0)+(s.rem||0);
   var rc=recoveryScore(entryFor(date)),r=rc?rc.value:50;
   return (EB.rc*Math.max(0,(s.asleep||0)-rest)+EB.rr*rest)*Math.pow(r/55,EB.g);}
-function energyTracks(){
-  if(CACHE.energy)return CACHE.energy;
-  var T={};CACHE.energy=T;
+function energyTracks(P){
+  var custom=!!P;
+  if(!custom&&CACHE.energy)return CACHE.energy;
+  P=P||energyParams();
+  var T={};if(!custom)CACHE.energy=T;
   var first=null,lastD=null;
   S.entries.forEach(function(e){if(e.hs&&!first)first=e.date;if(e.hs||e.sessions)lastD=e.date;});
   if(!first)return T;
+  if(P.from&&P.from>first)first=P.from;
   var td=today();if(lastD<td&&entryFor(td))lastD=td;
   // where each sleep session ends, in 15-minute slots
   var ends={},cover={};
@@ -1066,13 +1401,13 @@ function energyTracks(){
     for(var j=0;j<=95;j++){
       if(j>stop){tr.series.push(null);continue;}
       var cs=ends[dn*96+j];
-      if(cs)cs.forEach(function(c){var a=sessionCharge(c.s,c.d),b=Math.min(100,E+a);
+      if(cs)cs.forEach(function(c){var a=sessionCharge(c.s,c.d)*P.kc,b=Math.min(100,E+a);
         tr.charged+=b-E;tr.charges.push({s:c.s,amt:b-E});E=b;});
       if(!m[j]){var x=sd&&sd.slots[j]!==null?sd.slots[j]:avg;
-        var dr=0.25*(EB.b0+EB.b1*x/100),b2=Math.max(0,E-dr);tr.drained+=E-b2;E=b2;}
+        var dr=0.25*(EB.b0+EB.b1*x/100)*P.kd,b2=Math.max(0,E-dr);tr.drained+=E-b2;E=b2;}
       // on the chart, a session's charge fills in gradually across the night
       var cv=cover[dn*96+j],shown=E;
-      if(cv){if(cv.amt===undefined)cv.amt=sessionCharge(cv.s,cv.d);
+      if(cv){if(cv.amt===undefined)cv.amt=sessionCharge(cv.s,cv.d)*P.kc;
         shown=Math.min(100,E+cv.amt*(dn*96+j-cv.k0+1)/(cv.k1-cv.k0+1));}
       tr.series.push(shown);shownPrev=shown;
     }
@@ -1097,7 +1432,7 @@ var EXPLAIN={
   sleep:{t:"Sleep",s:"Scored on your main sleep of the night. Naps show up separately and charge your Energy Bank, but don't change this score.",
     f:"Time asleep against your sleep need (up to it, not beyond), the share of <b>Deep</b> and <b>REM</b> sleep, and efficiency — how much of the time between falling asleep and waking you were actually asleep. Deep sleep carries the most weight after duration."},
   recovery:{t:"Recovery",s:"How ready your body is to take on Strain today, judged against your own last 60 days rather than anyone else's.",
-    f:"Four things from last night are each ranked against your own previous 60 nights (leaving out the most unusual 10% at each end), the way a percentile works: where today's value falls on the bell curve of your recent normal. <b>HRV</b> counts most (about 40%): higher than usual is better. It's the RMSSD of your heartbeat data, using only the readings your watch took while you were actually asleep. <b>Resting heart rate</b> counts about 30%, and lower than usual is better. <b>Respiratory rate</b> counts about 10%, and lower than usual is better. Your <b>Sleep Score</b> adds the rest: about 3 points of Recovery for every 10 points of Sleep. A night that's average on everything lands near 55%, and the score runs from 1 to 99. The weights were fitted to 99 of your own Bevel scores, July through October. Most days land within 2–3 points of Bevel. On days refreshed by the Shortcut, Apple only shares its own HRV number (SDNN), not the heartbeat data, so Recovery is about ±5 until your next full export."},
+    f:"Four things from last night are each ranked against your own previous 60 nights (leaving out the most unusual 10% at each end), the way a percentile works: where today's value falls on the bell curve of your recent normal. <b>HRV</b> counts most (about 40%): higher than usual is better. It's the RMSSD of your heartbeat data, using only the readings your watch took while you were actually asleep. <b>Resting heart rate</b> counts about 30%, and lower than usual is better. <b>Respiratory rate</b> counts about 10%, and lower than usual is better. Your <b>Sleep Score</b> adds the rest: about 3 points of Recovery for every 10 points of Sleep. A night that's average on everything lands near 55%, and the score runs from 1 to 99. The weights were fitted to 99 of your own Bevel scores, July through October, and keep adjusting to any days you enter under Calibrate to Bevel. Most days land within 2–3 points of Bevel. On days refreshed by the Shortcut, Apple only shares its own HRV number (SDNN), not the heartbeat data, so Recovery is about ±5 until your next full export."},
   strain:{t:"Strain",s:"Cardiovascular load from your heart rate through the day, measured against your own heart-rate reserve, so everyday walking around doesn't fill it up.",
     f:"Every awake minute counts by how far your heart rate sat into your <b>heart-rate reserve</b>: the range from your resting heart rate (your overnight low, averaged over 30 days) to your max of "+"<b>194 bpm</b>. Below <b>30%</b> of that reserve counts nothing. Above it, each minute is weighted exponentially with intensity (Banister's TRIMP, women's constants), so a minute near your max counts about 10× a brisk-walk minute. The total goes on a <b>logarithmic</b> 0–100% scale set from WHOOP's published examples: an hour's walk ≈ 30%, an hour's run ≈ 57%, a marathon day ≈ 95%. Target Strain comes from your last 14 days of Strain, raised when you're well recovered and lowered when you're not."},
   stress:{t:"Stress",s:"How far your heart rate sat above your resting normal, every 5 minutes from when you fell asleep until the next night — sleep included, like Bevel's chart.",
@@ -1989,6 +2324,7 @@ function renderHM(e){
   ];
   cfg.forEach(function(c){
     var v=!e?null:c.field==="hrvSleep"?hrvOf(e):has(e[c.field])?Number(e[c.field]):null;
+    if(v!==null){v=calApply(c.field,v);c.base={mean:calApply(c.field,c.base.mean),sd:c.base.sd*Math.abs(calSlope(c.field))};}
     c.value=v;c.display=v===null?"":c.fmt(v);
     g.appendChild(hmTile(c));
   });
@@ -2183,6 +2519,10 @@ function bioStatus(key,ds,v){
   var good=m.better==="high"?dir==="up":m.better==="low"?dir==="down":null;
   return {word:dir==="up"?"Increasing":"Decreasing",dir:dir,col:good===true?"var(--st-good)":good===false?"var(--st-bad)":"var(--ink3)"};
 }
+Object.keys(M).forEach(function(k){if(CAL_INTERNAL[k])return;var m=M[k];
+  if(m.get&&!m.rawGet){var g=m.get;m.rawGet=g;m.get=function(e){var v=g(e);return v===null||v===undefined?v:calApply(k,Number(v));};}
+  if(m.at&&!m.rawAt){var a=m.at;m.rawAt=a;m.at=function(ds){var v=a(ds);return v===null||v===undefined?v:calApply(k,Number(v));};}
+});
 function seriesOf(key,days){
   // history up to the day you're viewing, so trends line up with the date picker
   var m=M[key],upto=S.viewDate||"9999",all=S.entries.slice(0,lowerIdx(upto)+(entryFor(upto)?1:0));
@@ -2381,13 +2721,14 @@ function openDetail(k){
 
   // duo tiles
   var duo=null;
-  if(k==="sleep"&&e)duo=[["clock","Time in Bed",hm(e.inBedMin)||"—"],["clock","Time Asleep",hm(e.asleepMin)||"—"]];
-  if(k==="recovery"&&e)duo=[["wave","Resting HRV",hrvOf(e)!==null?hrvOf(e).toFixed(1):"—","ms"],
-                            ["heart","Resting HR",has(e.hrSleep)?Number(e.hrSleep).toFixed(1):"—","bpm"]];
+  function cv2(key){var v=e?dayVal(key,e.date):null;return v;}
+  if(k==="sleep"&&e)duo=[["clock","Time in Bed",hm(e.inBedMin)||"—"],["clock","Time Asleep",cv2("asleepMin")!==null?hm(cv2("asleepMin")):"—"]];
+  if(k==="recovery"&&e)duo=[["wave","Resting HRV",cv2("hrvSleep")!==null?cv2("hrvSleep").toFixed(1):"—","ms"],
+                            ["heart","Resting HR",cv2("hrSleep")!==null?cv2("hrSleep").toFixed(1):"—","bpm"]];
   if(k==="strain"&&e)duo=[["timer","Duration",hm((e.workouts||[]).reduce(function(t,w){return t+(w.dur||0);},0))||"0m"],
-                          ["flame","Total Energy",has(e.totalKJ)?Math.round(e.totalKJ/4.184).toLocaleString():"—","kcal"]];
-  if(k==="stress"&&e)duo=[["wave","Overnight HRV",hrvOf(e)!==null?Math.round(hrvOf(e)):"—","ms"],
-                          ["heart","Daytime HR",has(e.hrDay)?Math.round(e.hrDay):"—","bpm"]];
+                          ["flame","Total Energy",cv2("totalKJ")!==null?Math.round(cv2("totalKJ")).toLocaleString():"—","kcal"]];
+  if(k==="stress"&&e)duo=[["wave","Overnight HRV",cv2("hrvSleep")!==null?Math.round(cv2("hrvSleep")):"—","ms"],
+                          ["heart","Daytime HR",cv2("hrDay")!==null?Math.round(cv2("hrDay")):"—","bpm"]];
   if(k==="energy"&&e){var eb=energyBank(e);
     if(eb)duo=[["flame","Total Charged","+"+eb.charged,"%"],["flame","Total Drained","−"+eb.drained,"%"]];}
   if(duo){
@@ -2450,6 +2791,12 @@ function openDetail(k){
   var why=el("button","btn sec wide");why.textContent="How "+cfg.title+" is worked out";
   why.style.margin="16px 0 26px";
   why.addEventListener("click",function(){explainSheet(k==="energy"?"energy":k);});
+  var CALK={recovery:"recoveryScore",sleep:"sleepScore",strain:"strainScore",stress:"stressScore",energy:"energy"};
+  if(CALK[k]){
+    var cb=el("button","btn sec wide","Bevel shows a different number?");cb.style.margin="-16px 0 26px";
+    cb.addEventListener("click",function(){openCalibrate(viewDateStr(),CALK[k]);});
+    setTimeout(function(){if(why.parentNode)why.parentNode.insertBefore(cb,why.nextSibling);},0);
+  }
   b.appendChild(why);
 
   $("detailPage").classList.add("on");
@@ -2900,6 +3247,8 @@ function renderTrend(){
   }
   low.appendChild(trendsAnalysis(key));
   low.appendChild(el("div","tv-foot","Based on 7-day rolling averages for the select period."));
+  if(calField(key)){var cbt=el("button","btn sec wide","Bevel shows a different number?");cbt.style.marginTop="18px";
+    cbt.addEventListener("click",function(){openCalibrate(lastP?lastP.date:TV.end,key);});low.appendChild(cbt);}
 
   // what it means
   var D=DEFS[key];
@@ -3654,6 +4003,7 @@ $("menuBtn").addEventListener("click",function(){
     menuItem(h,"heart","Import Apple Health",openImport);
     menuItem(h,"wave","AI Coach",openCoach);
     menuItem(h,"bed","Log an entry",openLog);
+    menuItem(h,"sprout","Calibrate to Bevel",function(){openCalibrate();});
     menuItem(h,"gauge","Settings",openSettings);
     menuItem(h,"bank","Backup & privacy",openBackup);
     closeBtn(h);
@@ -3792,6 +4142,13 @@ function restoreBackup(file,ctx){
         if(byD[e.date]){var m=Object.assign({},byD[e.date],e);m.id=byD[e.date].id;byD[e.date]=m;}
         else{byD[e.date]=Object.assign({id:"e"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)},e);}});
       S.entries=Object.keys(byD).sort().map(function(k){return byD[k];});saveE();
+      if(d.calib&&typeof d.calib==="object"){var okD=function(dt){return /^\d{4}-\d{2}-\d{2}$/.test(dt);};
+        ["rec","sleep"].forEach(function(k){var src=d.calib[k]||{};
+          Object.keys(src).forEach(function(dt){if(okD(dt)&&isFinite(Number(src[dt]))&&!has(S.calib[k][dt]))S.calib[k][dt]=Number(src[dt]);});});
+        var em=d.calib.energy||{};Object.keys(em).forEach(function(dt){if(okD(dt)&&em[dt]&&isFinite(Number(em[dt].v))&&!S.calib.energy[dt])S.calib.energy[dt]={v:Number(em[dt].v),min:Number(em[dt].min)||0};});
+        var mm=d.calib.m||{};Object.keys(mm).forEach(function(k){if(!calField(k))return;var st=calStore(k,true);
+          Object.keys(mm[k]||{}).forEach(function(dt){if(okD(dt)&&isFinite(Number(mm[k][dt]))&&!has(st[dt]))st[dt]=Number(mm[k][dt]);});});
+        saveC();}
       if(Array.isArray(d.labs)){var ids={};S.labs.forEach(function(t){ids[t.id]=1;});
         d.labs.forEach(function(t){if(t&&t.id&&!ids[t.id])S.labs.push(t);});saveL();}
       if(d.settings){var keep=S.settings.apiKey;
@@ -4083,7 +4440,7 @@ function openCoach(){
 }
 
 /* ======================= SETTINGS / BACKUP ======================= */
-var APP_BUILD=6,APP_VER="Oct 29 · build 6";
+var APP_BUILD=7,APP_VER="Nov 6 · build 7";
 /* Self-update: phones keep an old copy of this page (Safari tabs, the browser cache). On every open,
    fetch the live file from GitHub, skipping all caches; if it has a newer build number, reload into it.
    Your data lives in this browser's storage, not in the page, so nothing is lost. */
@@ -4193,7 +4550,7 @@ function openBackup(){
     ex.addEventListener("click",function(){
       var out=Object.assign({},S.settings);if(!cb.checked)out.apiKey="";
       var payload={app:"bevel-local",version:3,exportedAt:new Date().toISOString(),
-        entries:S.entries,settings:out,chat:S.chat,labs:S.labs};
+        entries:S.entries,settings:out,chat:S.chat,labs:S.labs,calib:S.calib};
       var url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}));
       var a=el("a");a.href=url;a.download="bevel-local-"+today()+".json";
       document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
@@ -4225,7 +4582,7 @@ function openBackup(){
     yes.addEventListener("click",function(){
       Object.keys(K).forEach(function(k){localStorage.removeItem(K[k]);});
       OLD.forEach(function(o){localStorage.removeItem(o.e);localStorage.removeItem(o.s);localStorage.removeItem(o.c);});
-      S.entries=[];S.chat=[];S.labs=[];S.settings=Object.assign({},DEF);
+      S.entries=[];S.chat=[];S.labs=[];S.calib={rec:{},sleep:{},m:{},energy:{}};S.settings=Object.assign({},DEF);
       applyTheme();renderAll();closeSheet();toast("All local data erased.");});
     dz.appendChild(er);dz.appendChild(conf);h.appendChild(dz);
     h.appendChild(el("div","disc","Bevel Local is an independent personal project inspired by the Bevel health app. It isn't affiliated with, endorsed by or connected to Bevel or Finerpoint, Inc."));
@@ -4275,7 +4632,7 @@ if(window.matchMedia){var mq=window.matchMedia("(prefers-color-scheme: dark)");
 window.bevelLocal={state:S,sleep:sleepScore,recovery:recoveryScore,strain:strainScore,stress:stressScore,
   energy:energyBank,target:targetStrain,hrDip:hrDip,sleepBank:sleepBank,entry:entryFor,baseline:baseline,
   view:function(d){S.viewDate=d||null;renderAll();},detail:function(k){openDetail(k);},
-  whoopAge:whoopAge,dayVal:dayVal,healthspan:healthspanMetrics,sleepConsistency:sleepConsistencyDay,nightLow:nightLow,labs:function(){return S.labs;}};
+  whoopAge:whoopAge,dayVal:dayVal,bust:bust,healthspan:healthspanMetrics,sleepConsistency:sleepConsistencyDay,nightLow:nightLow,labs:function(){return S.labs;}};
 })();
 </script>
 </body>
