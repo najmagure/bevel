@@ -315,6 +315,44 @@
     display:grid;place-items:center;flex-shrink:0}
   .sendb svg{width:19px;height:19px} .sendb:disabled{opacity:.35}
   .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .bio-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bio-tile{border:none;background:var(--card2);border-radius:18px;padding:12px 14px;text-align:left;cursor:pointer;font-family:inherit;color:var(--ink)}
+  .bio-tile .l{font-size:13px;color:var(--ink3);font-weight:550}
+  .bio-tile .v{font-size:24px;font-weight:700;letter-spacing:-.03em;margin-top:3px;font-variant-numeric:tabular-nums}
+  .bio-tile .s{font-size:12.5px;color:var(--ink3);margin-top:2px;font-variant-numeric:tabular-nums}
+  .hs-grp{background:var(--card);border-radius:22px;box-shadow:var(--sh);padding:6px 16px 4px;margin-bottom:14px}
+  .hs-gh{display:flex;justify-content:space-between;align-items:baseline;padding:12px 2px 6px;font-size:13px;font-weight:650;
+    color:var(--ink3);text-transform:uppercase;letter-spacing:.05em}
+  .hs-gh b{font-size:14px;text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+  .hs-row{display:flex;align-items:center;gap:12px;width:100%;border:none;background:none;padding:11px 0;border-top:1px solid var(--hair);
+    cursor:pointer;text-align:left;font-family:inherit;color:var(--ink)}
+  .hs-ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+  .hs-ic svg{width:19px;height:19px}
+  .hs-b{flex:1;min-width:0}.hs-t{font-size:15.5px;font-weight:600}.hs-s{font-size:13px;color:var(--ink3);margin-top:2px;font-variant-numeric:tabular-nums}
+  .hs-y{font-size:14.5px;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .hs-yrs{font-size:24px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .hs-ref{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--card2);border-radius:18px;padding:13px 16px;margin:0 16px 12px;font-size:15px;color:var(--ink3)}
+  .hs-ref svg{width:20px;height:20px;flex-shrink:0}.hs-ref b{color:var(--ink);font-weight:650}
+  .hs-cap{text-align:center;font-size:14.5px;color:var(--ink3);margin:4px 16px 22px;line-height:1.45}
+  .hs-card{background:var(--card);border-radius:24px;box-shadow:var(--sh);padding:20px;margin-bottom:22px}
+  .hs-h{font-size:22px;font-weight:700;letter-spacing:-.025em;margin:4px 4px 12px}
+  .hs-p{font-size:16px;line-height:1.55;color:var(--ink3)}
+  .hs-sub{font-size:17px;font-weight:650;color:var(--ink);margin:16px 0 4px}
+  .hs-band{display:flex;align-items:center;gap:12px;border-radius:18px;padding:14px 16px;margin-top:10px;font-size:16.5px;font-weight:600}
+  .hs-band.young{background:rgba(31,199,164,.13);color:#1FC7A4}.hs-band.stable{background:var(--card2);color:var(--ink2)}.hs-band.old{background:rgba(255,163,26,.14);color:#FFA31A}
+  .hs-bi{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;background:currentColor}
+  .hs-bi svg{width:13px;height:13px}.hs-band.stable .hs-bi{background:var(--ink4)}
+  .hs-bn{flex:1}.hs-bv{text-align:right;font-variant-numeric:tabular-nums}
+  .hs-imp{display:flex;gap:14px;padding:10px 0}
+  .hs-ii{width:32px;height:32px;flex-shrink:0;color:#1FC7A4;display:grid;place-items:center}.hs-ii svg{width:28px;height:28px}
+  .hs-it{font-size:16.5px;font-weight:650;margin-bottom:2px}
+  .hs-gsvg{width:100%;height:auto;display:block}
+  .hs-gt{font-size:22px;font-weight:650;letter-spacing:-.02em;margin-top:12px}
+  .hs-gs{font-size:15px;color:var(--ink3);margin-top:4px}
+  .hs-chg{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--hair)}
+  .hs-chg:last-child{border-bottom:none}
+  .hs-ct{font-size:16px;font-weight:600}.hs-cs{font-size:13px;color:var(--ink3);margin-top:3px;font-variant-numeric:tabular-nums}
+  .hs-cr{text-align:right;flex-shrink:0}.hs-cw{font-size:15.5px;font-weight:650}
   .bseg{display:flex;background:var(--seg-bg);border-radius:999px;padding:3px;margin:2px 0 12px}
   .bseg button{flex:1;border:none;background:none;border-radius:999px;padding:8px 0;font-size:14px;font-weight:600;color:var(--ink3);cursor:pointer;font-family:inherit}
   .bseg button.on{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.12)}
@@ -601,18 +639,11 @@
         <svg id="bioDial" viewBox="0 0 320 250"></svg>
         <div style="position:absolute;left:0;right:0;top:36%;text-align:center" id="bioMid"></div>
       </div>
-      <div id="bioPace" style="text-align:center;margin:-6px 0 10px"></div>
+      <div id="bioPace" style="margin:-10px 0 10px"></div>
       <div id="bioNote" style="font-size:12.5px;color:var(--ink3);text-align:center;line-height:1.45;margin:0 16px 8px"></div>
       <button class="btn sec wide" id="bioWhy" style="display:none;margin-top:6px">How this is worked out</button>
     </div>
 
-    <div id="bioChangeWrap" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px">
-        <div style="font-size:21px;font-weight:700;letter-spacing:-.03em">What Changed</div>
-        <div style="font-size:13px;color:var(--ink3)" id="bioChangeSince"></div>
-      </div>
-      <div class="card" style="padding:12px 15px 4px" id="bioChange"></div>
-    </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px">
       <div style="font-size:21px;font-weight:700;letter-spacing:-.03em">Healthspan</div>
@@ -939,7 +970,6 @@ function rawVal(k,ds){
   if(k==="strainScore"){if(!e)return null;var t=trimpOf(e);return t?strainFromTrimp(t.T):null;}
   if(k==="recoveryScore"){var rf=e?recFeats(e):null;return rf?clamp(dot(recW(rf.exact),rf.x),1,99):null;}
   if(k==="sleepScore"){var sf=e?sleepFeatsOf(e):null;return sf?clamp(dot(SLP0,sf.x),1,100):null;}
-  if(k==="sleepC")return sleepConsistencyRaw(ds);
   var m=M[k];if(!m)return null;
   if(m.rawAt){var a=m.rawAt(ds);return a===null||a===undefined||!isFinite(a)?null:Number(a);}
   if(!e)return null;var g=(m.rawGet||m.get)(e);return g===null||g===undefined||!isFinite(g)?null:Number(g);
@@ -955,8 +985,7 @@ function calLinFit(k){
     var sig=kd==="clock"?10:kd==="dur"||kd==="sdur"?15:kd==="pct"?3:Math.max(0.05*mu,0.5);
     var sdA=kd==="clock"?60:kd==="dur"||kd==="sdur"?20:kd==="pct"?4:0.06*mu+0.5,sdB=kd==="clock"?0.001:0.1;
     if(k==="recoveryScore"||k==="sleepScore")sdB=0.02;
-    if(k==="strainScore"){sig=4;sdA=8;sdB=0.15;}
-    if(k==="sleepC"){sig=4;sdA=20;sdB=0.3;}   // a different formula from Bevel's, so allow a real offset and rescale   // this site's Strain is deliberately stricter, so allow a real rescale
+    if(k==="strainScore"){sig=4;sdA=8;sdB=0.15;}   // this site's Strain is deliberately stricter, so allow a real rescale
     var A=[[1/(sdA*sdA),0],[0,1/(sdB*sdB)]],bb=[0,1/(sdB*sdB)];
     rows.forEach(function(r){var wt=Math.pow(0.5,Math.max(0,td-dnum(r.d))/120)/(sig*sig),x=[1,r.x];
       for(var i=0;i<2;i++){bb[i]+=wt*x[i]*r.y;for(var j=0;j<2;j++)A[i][j]+=wt*x[i]*x[j];}});
@@ -970,7 +999,7 @@ function calLinFit(k){
 }
 function calLimit(k,r,v){var m=M[k];
   if(k==="recoveryScore")return clamp(r,1,99);
-  if(k==="strainScore"||k==="sleepC"||(m&&unitOf(m)==="%"))return clamp(r,0,100);
+  if(k==="strainScore"||(m&&unitOf(m)==="%"))return clamp(r,0,100);
   if(v>=0&&k!=="sleepBank")return Math.max(0,r);return r;}
 function calApply(k,v){var f=calLinFit(k);return f?calLimit(k,f.a+f.b*v,v):v;}
 function calSlope(k){var f=calLinFit(k);return f?f.b:1;}
@@ -1009,7 +1038,6 @@ var CAL_FIELDS=[
   {g:"Scores",k:"sleepScore",n:"Sleep Score",kind:"pct"},
   {g:"Scores",k:"strainScore",n:"Strain",kind:"pct"},
   {g:"Scores",k:"energy",n:"Energy Bank",kind:"pct"},
-  {g:"Other",k:"sleepC",n:"Sleep Consistency",kind:"pct"},
   {g:"Other",k:"hrvSleep",n:"Resting HRV",kind:"num",u:"ms"},
   {g:"Other",k:"hrDip",n:"Heart Rate Dip",kind:"pct"},
   {g:"Other",k:"sleepBank",n:"Sleep Bank",kind:"sdur"},
@@ -1062,7 +1090,6 @@ function calSite(f,d,min){
   if(f.k==="sleepScore"){var q=e?sleepScore(e):null;return q?q.value:null;}
   if(f.k==="strainScore"){var t=e?strainScore(e):null;return t?t.value:null;}
   if(f.k==="stressScore"){var x=e?stressScore(e):null;return x?x.value:null;}
-  if(f.k==="sleepC"){var c=sleepConsistencyDay(d);return c===null?null:Math.round(c);}
   if(f.k==="energy"){var tr=energyTracks()[d];if(!tr)return null;var v=tr.series[Math.min(95,Math.floor((min||0)/15))];return Math.round(v===null||v===undefined?tr.end:v);}
   return dayVal(f.k,d);
 }
@@ -3131,13 +3158,13 @@ var TV=null;   // open trend view state
 function openTrend(key,group){
   group=group&&group.indexOf(key)>=0?group:[key];
   var end=lastDataDate(key,viewDateStr())||viewDateStr();
-  TV={key:key,group:group,span:30,end:end};
+  TV={key:key,group:group,span:30,end:end};HSV=null;
   var pg=$("trendPage");
   pg.classList.add("on");document.body.classList.add("noscroll");
   renderTrend();
   $("trendScroll").scrollTop=0;
 }
-function closeTrend(){$("trendPage").classList.remove("on");document.body.classList.remove("noscroll");TV=null;}
+function closeTrend(){$("trendPage").classList.remove("on");document.body.classList.remove("noscroll");TV=null;HSV=null;}
 $("trendClose").addEventListener("click",closeTrend);
 
 function renderTrend(){
@@ -3468,7 +3495,7 @@ function ivInter(A,B){var i=0,j=0,t=0;
 /* Bevel-style: how steady your bedtime and wake time were over the last 7 nights. For each,
    the typical distance (in minutes) from that week's usual time; every 4 minutes of drift
    costs 1 point. 30 min of drift ≈ 92%, 1 hour ≈ 85%, 2 hours ≈ 70%. Needs 4 of the 7 nights.
-   (The old WHOOP-style overlap score read about 25 points under Bevel.) Calibratable to Bevel. */
+   (The old WHOOP-style overlap score read about 25 points under Bevel.) */
 function mainSleepTimes(ds){
   var p=primaryOf(entryFor(ds));
   if(!p||!has(p.sw)||!has(p.ew)||!(p.asleep>=180))return null;
@@ -3490,7 +3517,7 @@ function sleepConsistencyRaw(date){
 }
 function sleepConsistencyDay(date){
   return memo("sc|"+date,function(){
-    var r=sleepConsistencyRaw(date);return r===null?null:clamp(calApply("sleepC",r),0,100);
+    return sleepConsistencyRaw(date);
   });
 }
 /* ---- resting heart rate the way WHOOP takes it: low and steady during sleep, not a daytime
@@ -3598,7 +3625,7 @@ var HSM=[
     tgt:function(){return 70;},tgtTxt:function(){return "70%+";},
     fmt:function(v){return Math.round(v)+"%";},
     yrs:function(v){return capY(v<70?0.09*(70-v):-0.04*(v-70),-1,3);},
-    how:"Each day looks back 7 nights at your main sleep. For bedtime and for wake time, it takes how far each night typically sat from that week's usual time. Every 4 minutes of drift costs 1 point: 30 minutes ≈ 92%, an hour ≈ 85%, two hours ≈ 70%. If you add Bevel's daily numbers in Calibrate, it shifts to match them. Each point under 70% adds 0.09 years, up to 3. Each point over 70% takes off 0.04 years, up to 1. Source: Windred et al., 2024 (UK Biobank), where regular sleep timing predicted mortality better than sleep length.",
+    how:"Each day looks back 7 nights at your main sleep. For bedtime and for wake time, it takes how far each night typically sat from that week's usual time. Every 4 minutes of drift costs 1 point: 30 minutes ≈ 92%, an hour ≈ 85%, two hours ≈ 70%. Each point under 70% adds 0.09 years, up to 3. Each point over 70% takes off 0.04 years, up to 1. Source: Windred et al., 2024 (UK Biobank), where regular sleep timing predicted mortality better than sleep length.",
     tip:"Keep your wake-up time within about 30 minutes every day, weekends included."},
   {k:"z13",g:"Activity",n:"Time in HR Zones 1–3",i:"heart",
     s:"Weekly minutes at light-to-moderate effort: 40–80% of your heart-rate reserve.",
@@ -3681,7 +3708,6 @@ function yrsColor(y){return y>0.05?"var(--warn)":y<-0.05?"var(--recovery)":"var(
 function renderBio(){
   var svgEl2=$("bioDial"),mid=$("bioMid"),why=$("bioWhy");
   svgEl2.innerHTML="";mid.innerHTML="";why.style.display="none";$("bioNote").textContent="";$("bioPace").innerHTML="";
-  $("bioChangeWrap").style.display="none";
   var b=whoopAge();
   var cx=160,cy=118,r=100,A0=200,A1=-20;
   function pt(d,rr){var a=d*Math.PI/180;return [cx+rr*Math.cos(a),cy+rr*Math.sin(a)];}
@@ -3723,21 +3749,21 @@ function renderBio(){
     Math.abs(b.delta).toFixed(1)+" years "+(b.delta<0?"younger":"older")+" than your age ("+b.age.toFixed(1)+")";
   mid.appendChild(fig);mid.appendChild(cap);
   // Pace of Aging chip
-  var pc=el("button","chip");pc.type="button";pc.style.cssText="margin:0 auto;display:inline-flex;gap:6px;align-items:center;font-size:14px;font-family:inherit;cursor:pointer";
-  var pv=el("b",null,b.pace.toFixed(1)+"x");pv.style.color=paceColor(b.pace);
-  pc.appendChild(document.createTextNode("Pace of Aging "));pc.appendChild(pv);
-  pc.addEventListener("click",openPaceSheet);$("bioPace").appendChild(pc);
-  var tr=paceTrail(b.end,4);
-  if(tr.length>=2){var pt2=el("div","ptrail");
-    pt2.appendChild(document.createTextNode("Weekly: "));
-    tr.forEach(function(w,i){if(i)pt2.appendChild(document.createTextNode(" → "));
-      var x=el("b",null,w.pace.toFixed(1)+"x");x.style.color=i===tr.length-1?paceColor(w.pace):"var(--ink2)";pt2.appendChild(x);});
-    $("bioPace").appendChild(pt2);}
-  renderBioChange(b);
+  // two tiles: Pace of Aging, and how the age moved this week
+  var wk=whoopAge(addDays(b.end,-7)),tl=el("div","bio-tiles");
+  var t1=el("button","bio-tile");t1.type="button";t1.appendChild(el("div","l","Pace of Aging"));
+  var v1=el("div","v",b.pace.toFixed(1)+"x");v1.style.color=paceColor(b.pace);t1.appendChild(v1);
+  t1.appendChild(el("div","s",wk&&has(wk.pace)?"was "+wk.pace.toFixed(1)+"x last week":paceWord(b.pace)));
+  t1.addEventListener("click",openPaceSheet);tl.appendChild(t1);
+  var t2=el("button","bio-tile");t2.type="button";t2.appendChild(el("div","l","This week"));
+  if(wk&&has(wk.value)){var dv=b.value-wk.value,v2=el("div","v",yrsText(dv));v2.style.color=yrsColor(dv);t2.appendChild(v2);
+    t2.appendChild(el("div","s",wk.value.toFixed(1)+" → "+b.value.toFixed(1)));}
+  else{t2.appendChild(el("div","v","—"));t2.appendChild(el("div","s","needs a week of history"));}
+  t2.addEventListener("click",openPaceSheet);tl.appendChild(t2);
+  $("bioPace").appendChild(tl);
+
   var thru=exportThrough();
-  $("bioNote").textContent=(b.n<9?"Based on "+b.n+" of 9 metrics. ":"")+
-    (thru?"Steps, workouts and VO₂ max are from your full export (through "+sdate(thru)+")."
-      :"Steps, workouts and VO₂ max come from your full Health export.");
+  $("bioNote").textContent=(b.n<9?"Based on "+b.n+" of 9 metrics · ":"")+(thru?"Export through "+sdate(thru):"");
   why.style.display="block";
   why.onclick=function(){openSheet(function(h){
     sheetTitle(h,"Biological Age · "+b.value.toFixed(1),EXPLAIN.bioage.s);
@@ -3796,134 +3822,366 @@ function openPaceSheet(){
     h.appendChild(f);closeBtn(h);
   });
 }
+/* ======================= HEALTHSPAN: Bevel-style metric pages =======================
+   Each metric opens a full page laid out like Bevel's: the number and the years it adds, a
+   week-by-week chart of 28-day averages, a range bar, Younger / Stable / Older ranges worked
+   out from this site's own scoring curves, then what it is and how to improve it. */
+var HS_COL={young:"#1FC7A4",stable:"var(--ink3)",old:"#FFA31A"};
+var HS_WORD={young:"Younger",stable:"Stable",old:"Older"};
+var HSPAN=[["3M",13],["6M",26],["1Y",52]];
+var HS_WEEKS=13;
+var HS_SPAN={sleepH:0.75,sleepC:8,z13:30,z45:8,str:12,steps:1500,vo2:3,rhr:5,lean:3};
+var HS_ZERO={z13:1,z45:1,str:1};
+function hsCls(y){return y<-0.05?"young":y>0.05?"old":"stable";}
+function hsMin(v){v=Math.round(v);return v>=60?(v%60?hm(v):(v/60)+"h"):v+"m";}
+var HSI={
+  sleepH:{g:[5,11],cap:"Daily average over the last 28 days.",
+    big:function(v){return [hm(v*60),""];},ax:function(v){return hm(v*60);},bd:function(v){return hm(v*60);},
+    what:"Your total time asleep each night across core, REM and deep sleep, naps included.",
+    imp:"Around 7–9 hours a night goes with the lowest long-term risk. Regularly sleeping much less, or much more, is linked to higher mortality, more inflammation and slower recovery.",
+    how:[["moon","Protect your sleep window","Give yourself enough time in bed to actually get 7 hours or more."],
+      ["clock","Wind down 30–60 min before bed","Dim the screens and slow down so you fall asleep sooner."],
+      ["bed","Keep the room cool, dark and quiet","Fewer disruptions means longer, unbroken sleep."],
+      ["zzz","Go easy on late alcohol and caffeine","Both cut into your deep and REM sleep."]],
+    fast:"Within days once your schedule is steady. It lasts as long as the habit does."},
+  sleepC:{g:[30,100],cap:"Each day scores the 7 nights before it. Points are 28-day averages.",
+    big:function(v){return [String(Math.round(v)),"%"];},ax:function(v){return Math.round(v)+"%";},bd:function(v){return Math.round(v)+"%";},
+    what:"How steady your bedtime and wake time are across the last 7 nights. 100% would mean exactly the same times every night.",
+    imp:"Regular sleep timing predicts lower mortality even after accounting for how long you sleep. It keeps your body clock, hormones and recovery in sync.",
+    how:[["sprout","Keep your wake time steady","Waking at the same time every day, weekends included, sets your rhythm."],
+      ["moon","Anchor your bedtime","A familiar routine at the same time tells your body it's time to sleep."],
+      ["clock","Wind down on a schedule","Late work and screens push sleep later than you planned."],
+      ["gauge","Shift in small steps","Move times by 15–30 minutes at a time instead of all at once."]],
+    fast:"Your score can move within 1–2 weeks. The health benefit comes from keeping it regular over time."},
+  z13:{g:[0,300],cap:"Weekly average over the last 28 days.",
+    big:function(v){return [hsMin(v),""];},ax:function(v){return hsMin(v);},bd:function(v){return Math.round(v)+"m/week";},
+    what:"Moderate effort where your heart rate is up but you can still talk: 40–80% of your heart-rate reserve.",
+    imp:"Regular moderate aerobic activity is strongly tied to better heart and metabolic health. The biggest drop in risk comes from going from little activity to about 150 minutes a week, with smaller gains past 300.",
+    how:[["steps","Walk briskly","A brisk walk counts as long as your heart rate is up."],
+      ["timer","Make it a routine","Three or four 30–40 minute sessions a week covers it."],
+      ["heart","Easy cardio","Cycling, swimming or rowing at a pace you could chat at."],
+      ["flame","Stack short bouts","Even 10-minute blocks add up over a week."]],
+    fast:"Minutes count straight away. Fitness gains show after 4–8 weeks."},
+  z45:{g:[0,60],cap:"Weekly average over the last 28 days.",
+    big:function(v){return [hsMin(v),""];},ax:function(v){return hsMin(v);},bd:function(v){return Math.round(v)+"m/week";},
+    what:"Hard effort near your maximum, where talking is difficult: above 80% of your heart-rate reserve.",
+    imp:"Vigorous minutes carry roughly twice the benefit of moderate ones. Most of the gain comes in the first 40–75 minutes a week, with smaller gains after that.",
+    how:[["bolt","Add intervals","A few 1–3 minute hard efforts with easy recovery in between."],
+      ["steps","Use hills and stairs","They push your heart rate up quickly."],
+      ["flame","Finish fast","Speed up for the last few minutes of a walk, run or ride."],
+      ["zzz","Recover between","One or two hard days a week is plenty."]],
+    fast:"Minutes count straight away. VO₂ max and resting heart rate respond over 4–8 weeks."},
+  str:{g:[0,120],cap:"Weekly average over the last 28 days.",
+    big:function(v){return [hsMin(v),""];},ax:function(v){return hsMin(v);},bd:function(v){return Math.round(v)+"m/week";},
+    what:"Resistance work like weights, bodyweight moves or bands. Counted from strength or core workouts on your watch, or ones you log here.",
+    imp:"Regular strength training is linked to a longer life and better heart health. Even small amounts help: risk is lowest around 40 minutes a week, and it works best combined with cardio.",
+    how:[["dumbbell","Two sessions a week","Two 20-minute sessions reach the target."],
+      ["timer","Start a workout on your watch","Pick Functional or Traditional Strength Training so it's recorded."],
+      ["gauge","Progress slowly","Add a little weight or a few reps each week."],
+      ["heart","Work the big muscles","Legs, back, chest and core give the most benefit."]],
+    fast:"Each logged minute counts right away. Strength itself builds over 4–8 weeks."},
+  steps:{g:[0,16000],cap:"Daily average over the last 28 days.",
+    big:function(v){return [Math.round(v).toLocaleString(),""];},ax:function(v){return v>=1000?(v/1000).toFixed(1)+"k":String(Math.round(v));},
+    bd:function(v){return (v/1000).toFixed(2).replace(/0$/,"")+"k";},
+    what:"How many steps you take each day, including during workouts.",
+    imp:"Higher daily step counts go with lower long-term risk and better heart and metabolic health. The largest gains come from moving from about 4,000 to 6,000–8,000 a day, with smaller gains above that.",
+    how:[["steps","Take walking breaks","Five minutes every hour adds about 3,000 steps a day."],
+      ["timer","Add one 20-minute walk","That's about 2,000 steps."],
+      ["flame","Take the stairs","Small choices add up across a day."],
+      ["heart","Walk while you talk","Take phone calls on your feet."]],
+    fast:"Your count changes within days. The health benefit builds over months."},
+  vo2:{g:[15,65],cap:"Average of your readings over the last 28 days.",
+    big:function(v){return [v.toFixed(1),""];},ax:function(v){return v.toFixed(1);},bd:function(v){return v.toFixed(1);},
+    what:"The most oxygen your body can take in, carry and use during hard exercise. It's a direct measure of cardio fitness.",
+    imp:"Higher VO₂ max is one of the strongest predictors of long-term health. As fitness rises, the risk of early death falls, and the fittest people have the lowest risk.",
+    how:[["steps","Build your aerobic base","Regular moderate cardio improves how well your body uses oxygen."],
+      ["bolt","Add high-intensity intervals","Short, structured hard efforts raise it further."],
+      ["timer","Make it weekly","Regular sessions beat occasional all-out efforts."],
+      ["moon","Prioritize recovery","Sleep and rest let the adaptations happen."]],
+    fast:"It can improve within 4–6 weeks of structured aerobic training, with gains for months if you keep going."},
+  rhr:{g:[40,100],cap:"Nightly low, averaged over the last 28 days.",
+    big:function(v){return [v.toFixed(1)," bpm"];},ax:function(v){return v.toFixed(1);},bd:function(v){return v.toFixed(1);},
+    what:"Your heart rate at its lowest and steadiest while you sleep. It shows how hard your heart works when your body is at rest.",
+    imp:"A lower resting heart rate goes with longer life and usually means a fitter, more efficient heart. Risk rises noticeably at higher levels.",
+    how:[["steps","Build aerobic fitness","Regular cardio is one of the best ways to lower it over time."],
+      ["gauge","Manage stress","Breathing exercises and downtime ease sustained highs."],
+      ["moon","Sleep and recover","Consistent rest supports your heart's regulation."],
+      ["clock","Watch late stimulants","Caffeine, alcohol and late meals raise it for the night."]],
+    fast:"It can start dropping within 2–4 weeks of steady aerobic training. Bigger drops take a few months."},
+  lean:{g:[40,100],cap:"Latest body fat reading, as 100 − body fat %.",
+    big:function(v){return [v.toFixed(1)," %"];},ax:function(v){return v.toFixed(1)+"%";},bd:function(v){return v.toFixed(1)+"%";},
+    what:"The share of your body that isn't fat: 100 minus your body fat %.",
+    imp:"More lean mass and less body fat are linked to lower mortality and better metabolic health.",
+    how:[["dumbbell","Strength train","Building muscle raises lean mass directly."],
+      ["sprout","Eat enough protein","It helps keep muscle while you lose fat."],
+      ["heart","Keep up cardio","It helps bring body fat down."],
+      ["moon","Sleep well","Poor sleep makes it harder to keep muscle."]],
+    fast:"It changes over months. Use the same scale or scan each time so readings compare."}
+};
+ICO.bolt=ICO.bolt||'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2 5 13.5h5.5L9.5 22 19 9.8h-5.6L13.5 2z"/></svg>';
+function hsStd(k,age){
+  var sx=sexOf(),who=sx?sx==="female"?"females":"males":"adults";
+  if(k==="vo2"||k==="steps"||k==="z13"||k==="z45")return Math.floor(age)+"-year-old "+who;
+  if(k==="rhr"||k==="lean")return "adult "+who;
+  return "all ages and genders";
+}
+// one point a week: the 28-day average ending that day
+function hsPoint(k,d){
+  if(k==="lean"){var bf=latestWithin("bodyFat",d,365);return bf?100-bf.v:null;}
+  var h=healthspanMetrics(d,28);return h[k]?h[k].v:null;
+}
+function hsSeries(k,end,weeks){
+  var out=[];for(var w=weeks-1;w>=0;w--){var d=addDays(end,-7*w);out.push({date:d,v:hsPoint(k,d)});}
+  return out;
+}
+// Younger / Stable / Older ranges, read straight off the scoring curve
+function hsBands(m,T,g){
+  var N=3000,lo=g[0],hi=g[1],st=(hi-lo)/N,cur=null,ivs=[];
+  for(var i=0;i<=N;i++){var v=lo+st*i,c=hsCls(m.yrs(v,T));
+    if(!cur||cur.c!==c){var e=i?v-st/2:v;if(cur)cur.b=e;cur={c:c,a:e,b:v};ivs.push(cur);}else cur.b=v;}
+  return ivs;
+}
+function hsBandText(ivs,cls,g,f){
+  var p=ivs.filter(function(x){return x.c===cls;});if(!p.length)return null;
+  return p.map(function(x){var atLo=x.a<=g[0]+1e-9,atHi=x.b>=g[1]-1e-9;
+    if(atLo&&atHi)return "Any";if(atLo)return "<"+f(x.b);if(atHi)return ">"+f(x.a);return f(x.a)+" - "+f(x.b);}).join(" or ");
+}
+
+function paceTrail(end,weeks){
+  var out=[];for(var k=weeks-1;k>=0;k--){var d=addDays(end,-7*k),w=whoopAge(d);
+    if(w&&has(w.pace))out.push({date:d,pace:w.pace,value:w.value});}
+  return out;
+}
+/* A metric's effect on Biological Age is the change in its 6-month years; its effect on Pace is
+   2 × (change in its 30-day years − change in its 6-month years). They add up to the totals. */
+function metricChanges(now,then){
+  return now.rows.map(function(r){
+    var o=then&&then.rows?then.rows.filter(function(x){return x.m.k===r.m.k;})[0]:null;
+    if(!r.x||!o||!o.x)return {m:r.m,r:r,missing:true};
+    var dAge=r.years-o.years,d30=r.years30-o.years30;
+    return {m:r.m,r:r,o:o,dAge:dAge,d30:d30,dPace:2*(d30-dAge)};
+  });
+}
+function chgWord(c){var t=c.d30;return t<-0.05?["Improving","var(--recovery)"]:t>0.05?["Worsening","var(--warn)"]:["Steady","var(--ink3)"];}
+function paceDeltaTxt(d){return Math.abs(d)<0.05?"±0.0x":(d>0?"+":"−")+Math.abs(d).toFixed(1)+"x";}
+
+/* ---- the Biology list: one card per group, each row a metric ---- */
 function renderHealthspan(b){
   var host=$("hsList");if(!host)return;host.innerHTML="";
   if(!b||b.needsAge)return;
-  var age=b.age;
+  var age=b.age,wk=b.value?whoopAge(addDays(b.end,-7)):null,ch={};
+  if(wk&&wk.rows)metricChanges(b,wk).forEach(function(c){ch[c.m.k]=c;});
   ["Sleep","Activity","Fitness"].forEach(function(g){
-    var hd=el("div","stept",g);hd.style.cssText="margin:"+(g==="Sleep"?"0":"16px")+" 4px 8px;color:var(--ink3);font-size:13px;text-transform:uppercase;letter-spacing:.04em";
-    host.appendChild(hd);
-    var c=el("div","card");c.style.padding="4px 15px";
-    b.rows.filter(function(r){return r.m.g===g;}).forEach(function(rw){
-      var m=rw.m,row=el("div","lrow");row.style.cursor="pointer";
-      var bd=el("div","b");bd.appendChild(el("div","t",m.n));
-      bd.appendChild(el("div","s",rw.x?m.fmt(rw.x.v)+" · target "+m.tgtTxt(age)
-        :m.k==="lean"?"Add your body fat % to include this":"Not enough data yet"));
-      row.appendChild(bd);
-      var y=el("div",null,rw.x?yrsText(rw.years):"—");
-      y.style.cssText="font-size:14px;font-weight:650;font-variant-numeric:tabular-nums;color:"+(rw.x?yrsColor(rw.years):"var(--ink4)");
-      row.appendChild(y);
-      var ar=sv("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2.4",
-        "stroke-linecap":"round","stroke-linejoin":"round",class:"arrow"});ar.appendChild(sv("path",{d:"M9 6l6 6-6 6"}));
-      row.appendChild(ar);
+    var rows=b.rows.filter(function(r){return r.m.g===g;}),tot=0;
+    rows.forEach(function(r){if(r.x)tot+=r.years;});
+    var c=el("div","hs-grp");
+    var hd=el("div","hs-gh");hd.appendChild(el("span",null,g));
+    var ty=el("b",null,yrsText(tot));ty.style.color=yrsColor(tot);hd.appendChild(ty);c.appendChild(hd);
+    rows.forEach(function(rw){
+      var m=rw.m,cls=rw.x?hsCls(rw.years):null,row=el("button","hs-row");row.type="button";
+      var ic=el("div","hs-ic");ic.innerHTML=ICO[m.i]||ICO.heart;
+      ic.style.color=cls?HS_COL[cls]:"var(--ink4)";ic.style.background=cls==="young"?"rgba(31,199,164,.14)":cls==="old"?"rgba(255,163,26,.14)":"var(--card2)";
+      row.appendChild(ic);
+      var bd=el("div","hs-b");bd.appendChild(el("div","hs-t",m.n));
+      var s=el("div","hs-s");
+      if(rw.x){var I=HSI[m.k],bg=I.big(rw.x.v);s.appendChild(document.createTextNode(bg[0]+bg[1]));
+        var c2=ch[m.k];if(c2&&!c2.missing){var w=chgWord(c2);if(w[0]!=="Steady"){var t=el("span",null,(w[0]==="Improving"?" ▲ ":" ▼ ")+w[0].toLowerCase());t.style.color=w[1];s.appendChild(t);}}}
+      else s.textContent=m.k==="lean"?"Add your body fat %":"Not enough data yet";
+      bd.appendChild(s);row.appendChild(bd);
+      var y=el("div","hs-y",rw.x?yrsText(rw.years):"—");y.style.color=rw.x?yrsColor(rw.years):"var(--ink4)";row.appendChild(y);
+      var ar=sv("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"2.4","stroke-linecap":"round","stroke-linejoin":"round",class:"arrow"});
+      ar.appendChild(sv("path",{d:"M9 6l6 6-6 6"}));row.appendChild(ar);
       row.addEventListener("click",function(){if(!rw.x&&m.k==="lean")openOneLog("bodyFat");else openHsMetric(m.k);});
       c.appendChild(row);
     });
     host.appendChild(c);
   });
 }
+
+/* ---- the metric page ---- */
+var HSV=null;
 function openHsMetric(k){
   var b=whoopAge();if(!b||!b.rows)return;
-  var rw=b.rows.filter(function(r){return r.m.k===k;})[0];if(!rw)return;
-  var m=rw.m,w=b.win||healthspanMetrics(bioEnd(),182);
-  openSheet(function(h){
-    sheetTitle(h,m.n,m.s+(k==="z13"&&w?" For you that's "+Math.round(w.L1)+"–"+Math.round(w.L4)+" bpm.":
-      k==="z45"&&w?" For you that's above "+Math.round(w.L4)+" bpm.":""));
-    var kv=el("div","kv");
-    function row(a,v,c){var r=el("div","r");r.appendChild(el("div","k",a));var x=el("div","v",v);if(c)x.style.color=c;r.appendChild(x);kv.appendChild(r);}
-    row("Last 6 months",rw.x?m.fmt(rw.x.v):"—");
-    row("Last 30 days",rw.y30&&rw.y30!==rw.x?m.fmt(rw.y30.v):rw.x?"same":"—");
-    row("Target for you",m.tgtTxt(b.age)+(k==="vo2"?" ml/kg/min":k==="rhr"?" bpm":""));
-    if(rw.x)row("Effect on your age",yrsText(rw.years),yrsColor(rw.years));
-    if(rw.x&&k!=="vo2"&&k!=="lean")row("Based on",rw.x.n+(k==="sleepH"||k==="sleepC"||k==="rhr"?" nights":" days"));
-    if(k==="lean"&&rw.x&&rw.x.date)row("Reading from",sdate(rw.x.date));
-    h.appendChild(kv);
-    var f=el("div","fml");f.innerHTML="<b>How it's scored.</b> "+m.how;h.appendChild(f);
-    var t=el("div","fml");t.style.marginTop="10px";t.innerHTML="<b>To improve it.</b> "+m.tip;h.appendChild(t);
-    if(k==="str"){
-      var ss=strengthSessions(b.end,42);
-      h.appendChild(Object.assign(el("div","stept"),{textContent:"Last 6 weeks"}));
-      var sk=el("div","kv");
-      if(!ss.length){var r0=el("div","r");r0.appendChild(el("div","k","No strength workouts found"));sk.appendChild(r0);}
-      ss.forEach(function(x){var r=el("div","r");r.style.alignItems="center";
-        r.appendChild(el("div","k",sdate(x.date)+" · "+strTypeName(x.type)+(x.src==="log"?" (logged)":" (watch)")));
-        r.appendChild(el("div","v",Math.round(x.min)+" min"));
-        if(x.src==="log"){var xb=el("button",null,"×");xb.setAttribute("aria-label","Remove");
-          xb.style.cssText="border:none;background:none;color:var(--ink3);font-size:20px;cursor:pointer;padding:0 0 0 10px";
-          xb.addEventListener("click",function(){removeStrLog(x.date,x.id);openHsMetric("str");});r.appendChild(xb);}
-        sk.appendChild(r);});
-      h.appendChild(sk);
-      var lb=el("button","btn wide","Log a strength workout");lb.addEventListener("click",function(){openStrengthLog();});h.appendChild(lb);
-      var nt=el("div","disc");nt.style.marginTop="8px";
-      nt.textContent="Watch workouts only arrive with a full Health export. The iPhone Shortcut refresh doesn't carry workouts, so log today's session here or wait for your next export.";
-      h.appendChild(nt);
-    }
-    if(k==="lean"){var ab=el("button","btn sec wide","Add body fat %");ab.style.marginTop="12px";
-      ab.addEventListener("click",function(){openOneLog("bodyFat");});h.appendChild(ab);}
-    closeBtn(h);
-  });
+  HSV={k:k};TV=null;
+  $("trendPage").classList.add("on");document.body.classList.add("noscroll");
+  renderHsMetric();$("trendScroll").scrollTop=0;
+}
+function renderHsMetric(){
+  if(!HSV)return;
+  var b=whoopAge(),k=HSV.k,rw=b.rows.filter(function(r){return r.m.k===k;})[0];if(!rw)return;
+  var m=rw.m,I=HSI[k],host=$("trendBody");host.innerHTML="";
+  $("trendTitle").textContent=m.n;$("trendPage").setAttribute("data-cat","bio");
+  var cls=rw.x?hsCls(rw.years):"stable",col=HS_COL[cls];
+
+  // the number and the years it adds
+  var top=el("div","tv-top"),L=el("div"),val=el("div","tv-val"),dt=el("div","tv-date"),R=el("div","tv-r"),yr=el("div","hs-yrs");
+  L.appendChild(val);L.appendChild(dt);R.appendChild(yr);top.appendChild(L);top.appendChild(R);host.appendChild(top);
+  function show(v,label){
+    val.innerHTML="";
+    if(v===null||v===undefined){val.textContent="—";val.style.color="var(--ink4)";dt.textContent=label;yr.textContent="";return;}
+    val.style.color="";var bg=I.big(v);val.appendChild(document.createTextNode(bg[0]));if(bg[1])val.appendChild(el("span","u",bg[1]));
+    dt.textContent=label;var y=m.yrs(v,rw.T);yr.textContent=(Math.abs(y)<0.05?"±0.0":(y>0?"+":"−")+Math.abs(y).toFixed(1))+" years";
+    yr.style.color=HS_COL[hsCls(y)];
+  }
+  var def6=rw.x?rw.x.v:null,defLab="6-month average · "+dshort(b.end);
+  show(def6,defLab);
+
+  // the other metrics in this group
+  var grp=HSM.filter(function(x){return x.g===m.g;});
+  var pr=el("div","tv-pills");
+  grp.forEach(function(x){var bt=el("button",x.k===k?"on":"",x.n);bt.type="button";
+    bt.addEventListener("click",function(){if(x.k===HSV.k)return;HSV.k=x.k;renderHsMetric();});pr.appendChild(bt);});
+  host.appendChild(pr);
+  setTimeout(function(){var on=pr.querySelector(".on");if(on)pr.scrollLeft=on.offsetLeft-(pr.clientWidth-on.offsetWidth)/2;},0);
+
+  // the chart
+  var ser=hsSeries(k,b.end,HS_WEEKS),pts=ser.filter(function(p){return p.v!==null;});
+  var chd=el("div","tv-chart");host.appendChild(chd);
+  if(pts.length>=2)drawHsChart(chd,ser,I,col,function(p){if(!p)show(def6,defLab);else show(p.v,"28 days to "+dlong(p.date));},k);
+  else chd.appendChild(el("div","empty","Not enough "+m.n+" data in this period."));
+
+  var pb=el("div","tv-per"),seg=el("div","seg");
+  HSPAN.forEach(function(sp,i){var bt=el("button",sp[1]===HS_WEEKS?"on":"",sp[0]);bt.type="button";
+    bt.addEventListener("click",function(){HS_WEEKS=sp[1];renderHsMetric();});seg.appendChild(bt);
+    if(i<HSPAN.length-1){var sep=el("i",null,"");if(sp[1]===HS_WEEKS||HSPAN[i+1][1]===HS_WEEKS)sep.style.visibility="hidden";seg.appendChild(sep);}});
+  pb.appendChild(seg);host.appendChild(pb);
+  var std=hsStd(k,b.age);
+  if(std!=="all ages and genders"){var rf=el("div","hs-ref");rf.innerHTML=ICO2.info;
+    rf.appendChild(document.createTextNode("Reference range: "));rf.appendChild(el("b",null,std));
+    rf.appendChild(document.createTextNode(" as of "+dshort(b.end)));host.appendChild(rf);}
+  host.appendChild(el("div","hs-cap",I.cap));
+
+  // lower part
+  var low=el("div","tv-low");host.appendChild(low);
+  var ivs=hsBands(m,rw.T,I.g);
+  low.appendChild(hsGauge(m,I,ivs,def6,cls,std));
+
+  // what changed
+  var wk=whoopAge(addDays(b.end,-7)),mo=whoopAge(addDays(b.end,-28));
+  var chg=[["Since last week",wk],["Since 4 weeks ago",mo]].map(function(x){
+    var c=x[1]&&x[1].rows?metricChanges(b,x[1]).filter(function(c){return c.m.k===k;})[0]:null;return [x[0],c];})
+    .filter(function(x){return x[1]&&!x[1].missing;});
+  if(chg.length){
+    low.appendChild(el("div","hs-h","What changed"));
+    var cc=el("div","hs-card");cc.style.padding="6px 20px";
+    chg.forEach(function(x){var c=x[1],w=chgWord(c),r=el("div","hs-chg");
+      var bd=el("div");bd.appendChild(el("div","hs-ct",x[0]));
+      var a=c.o.y30||c.o.x,z=c.r.y30||c.r.x;
+      bd.appendChild(el("div","hs-cs","Last 30 days: "+I.bd(a.v)+" → "+I.bd(z.v)));r.appendChild(bd);
+      var rr=el("div","hs-cr");var ww=el("div","hs-cw",w[0]);ww.style.color=w[1];rr.appendChild(ww);
+      rr.appendChild(el("div","hs-cs","age "+yrsText(c.dAge).replace(" yrs","")+" · pace "+paceDeltaTxt(c.dPace)));r.appendChild(rr);
+      cc.appendChild(r);});
+    low.appendChild(cc);
+  }
+
+  // strength: sessions and logging
+  if(k==="str"){
+    low.appendChild(el("div","hs-h","Last 6 weeks"));
+    var sc=el("div","hs-card");sc.style.padding="6px 20px";
+    var ss=strengthSessions(b.end,42);
+    if(!ss.length)sc.appendChild(el("div","hs-p","No strength workouts yet."));
+    ss.forEach(function(x){var r=el("div","hs-chg");
+      var bd=el("div");bd.appendChild(el("div","hs-ct",strTypeName(x.type)));bd.appendChild(el("div","hs-cs",sdate(x.date)+" · "+(x.src==="log"?"logged here":"from your watch")));r.appendChild(bd);
+      var rr=el("div","hs-cr");rr.style.display="flex";rr.style.alignItems="center";rr.appendChild(el("div","hs-cw",Math.round(x.min)+" min"));
+      if(x.src==="log"){var xb=el("button",null,"×");xb.setAttribute("aria-label","Remove");
+        xb.style.cssText="border:none;background:none;color:var(--ink3);font-size:22px;cursor:pointer;padding:0 0 0 12px";
+        xb.addEventListener("click",function(){removeStrLog(x.date,x.id);renderHsMetric();});rr.appendChild(xb);}
+      r.appendChild(rr);sc.appendChild(r);});
+    low.appendChild(sc);
+    var lb=el("button","btn wide","Log a strength workout");lb.addEventListener("click",function(){openStrengthLog();});low.appendChild(lb);
+    var nt=el("div","hs-cap");nt.style.margin="10px 4px 22px";
+    nt.textContent="Watch workouts arrive with a full Health export. The Shortcut refresh doesn't carry workouts, so log today's session here or wait for your next export.";
+    low.appendChild(nt);
+  }
+  if(k==="lean"){var ab=el("button","btn wide","Add body fat %");ab.style.marginBottom="22px";ab.addEventListener("click",function(){openOneLog("bodyFat");});low.appendChild(ab);}
+
+  // what it is
+  var def=el("div","tv-def");host.appendChild(def);
+  def.appendChild(el("div","hs-h",(k==="z13"||k==="z45"?"What are ":"What is ")+m.n+"?"));
+  var wc=el("div","hs-card");
+  wc.appendChild(el("div","hs-p",I.what));
+  wc.appendChild(el("div","hs-sub","Impact on Health"));wc.appendChild(el("div","hs-p",I.imp));
+  wc.appendChild(el("div","hs-sub","Ranges for "+std));
+  [["young",ICO2.arD],["stable",'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M7 12h10"/></svg>'],["old",ICO2.arU]].forEach(function(o){
+    var t=hsBandText(ivs,o[0],I.g,I.bd);if(!t)return;
+    var r=el("div","hs-band "+o[0]);var ic=el("span","hs-bi");ic.innerHTML=o[1];r.appendChild(ic);
+    r.appendChild(el("span","hs-bn",HS_WORD[o[0]]));r.appendChild(el("span","hs-bv",t));wc.appendChild(r);});
+  def.appendChild(wc);
+  def.appendChild(el("div","hs-h","How to improve"));
+  var hc=el("div","hs-card");
+  I.how.forEach(function(x){var r=el("div","hs-imp");var ic=el("div","hs-ii");ic.innerHTML=ICO[x[0]]||ICO.heart;r.appendChild(ic);
+    var bd=el("div");bd.appendChild(el("div","hs-it",x[1]));bd.appendChild(el("div","hs-p",x[2]));r.appendChild(bd);hc.appendChild(r);});
+  def.appendChild(hc);
+  var fc=el("div","hs-card");fc.appendChild(el("div","hs-sub","How fast can this change?"));fc.lastChild.style.marginTop="0";
+  fc.appendChild(el("div","hs-p",I.fast));def.appendChild(fc);
+  var sc2=el("div","hs-card");sc2.appendChild(el("div","hs-sub","How it's scored"));sc2.lastChild.style.marginTop="0";
+  sc2.appendChild(el("div","hs-p",m.how));def.appendChild(sc2);
 }
 
-/* ---- what changed: this week's numbers against 1, 2 or 4 weeks ago ----
-   Both are worked out from today's data, so every number uses the same formula.
-   A metric's effect on Biological Age is the change in its 6-month years; its effect on
-   Pace is 2 × (change in its 30-day years − change in its 6-month years). They add up to
-   the totals, so you can see exactly which metric moved which number. */
-var BIO_CMP=7;
-function paceTrail(end,weeks){
-  var out=[];for(var k=weeks-1;k>=0;k--){var d=addDays(end,-7*k),w=whoopAge(d);
-    if(w&&has(w.pace))out.push({date:d,pace:w.pace,value:w.value});}
-  return out;
+// Bevel's range bar: a row of ticks, the band you're in lit up, a tall tick where you are
+function hsGauge(m,I,ivs,v,cls,std){
+  var c=el("div","hs-card"),W=340,H=64,n=48,g=I.g,s=sv("svg",{viewBox:"0 0 "+W+" "+H,class:"hs-gsvg"});
+  var band=null;if(v!==null)ivs.forEach(function(x){if(v>=x.a-1e-9&&v<=x.b+1e-9)band=x;});
+  var vi=v===null?-1:Math.round(clamp((v-g[0])/(g[1]-g[0]),0,1)*(n-1)),col=HS_COL[cls];
+  for(var i=0;i<n;i++){var x=4+(W-8)*i/(n-1),vv=g[0]+(g[1]-g[0])*i/(n-1),on=band&&vv>=band.a-1e-9&&vv<=band.b+1e-9;
+    var big=i===vi;
+    s.appendChild(sv("rect",{x:x-(big?3:2),y:big?4:12,width:big?6:4,height:big?30:16,rx:big?3:2,
+      fill:big?col:on?col:"var(--rng-ico)",opacity:big?1:on?0.55:1}));}
+  function lab(x,t,anc,fill,wt){var e=sv("text",{x:x,y:56,"text-anchor":anc,"font-size":15,fill:fill,"font-weight":wt});e.textContent=t;s.appendChild(e);}
+  var vx=vi<0?0:4+(W-8)*vi/(n-1),vt=v===null?"":I.big(v)[0]+(I.big(v)[1]==="%"?"%":"");
+  if(v===null||vx>60)lab(4,I.ax(g[0]),"start","var(--ink4)",500);
+  if(v===null||vx<W-60)lab(W-4,I.ax(g[1]),"end","var(--ink4)",500);
+  if(v!==null)lab(clamp(vx,24,W-24),vt,"middle","var(--ink)",650);
+  c.appendChild(s);
+  var t=el("div","hs-gt");t.appendChild(document.createTextNode(m.n+": "));
+  var w=el("span",null,v===null?"No data":HS_WORD[cls]);w.style.color=v===null?"var(--ink4)":col;t.appendChild(w);c.appendChild(t);
+  c.appendChild(el("div","hs-gs","Standardized for "+std));
+  return c;
 }
-function metricChanges(now,then){
-  return now.rows.map(function(r){
-    var o=then.rows.filter(function(x){return x.m.k===r.m.k;})[0];
-    if(!r.x||!o||!o.x)return {m:r.m,r:r,missing:true};
-    var dAge=r.years-o.years,d30=r.years30-o.years30,dPace=2*(d30-dAge);
-    return {m:r.m,r:r,o:o,dAge:dAge,d30:d30,dPace:dPace};
-  });
-}
-function chgWord(c){
-  // judged on your last 30 days: that's what's actually changing right now
-  var t=c.d30;return t<-0.05?["Improving","var(--recovery)"]:t>0.05?["Worsening","var(--warn)"]:["Steady","var(--ink3)"];
-}
-function paceDeltaTxt(d){return Math.abs(d)<0.05?"±0.0x":(d>0?"+":"−")+Math.abs(d).toFixed(1)+"x";}
-function renderBioChange(b){
-  var wrap=$("bioChangeWrap"),host=$("bioChange");host.innerHTML="";
-  var then=whoopAge(addDays(b.end,-BIO_CMP));
-  wrap.style.display="block";
-  $("bioChangeSince").textContent="vs "+sdate(addDays(b.end,-BIO_CMP));
-  var seg=el("div","bseg");
-  [[7,"1 week"],[14,"2 weeks"],[28,"4 weeks"]].forEach(function(o){
-    var bt=el("button",BIO_CMP===o[0]?"on":null,o[1]);bt.type="button";
-    bt.addEventListener("click",function(){BIO_CMP=o[0];renderBioChange(b);});seg.appendChild(bt);});
-  host.appendChild(seg);
-  if(!then||!has(then.value)){host.appendChild(el("div","empty","Not enough data "+BIO_CMP/7+" week"+(BIO_CMP>7?"s":"")+" back to compare."));return;}
-  function head(t,a,z,dTxt,col,sub){
-    var r=el("div","chg");var bd=el("div","b");bd.appendChild(el("div","t",t));if(sub)bd.appendChild(el("div","s",sub));r.appendChild(bd);
-    var rr=el("div","r");rr.appendChild(el("div","big",a+" → "+z));var e2=el("div","w",dTxt);e2.style.color=col;rr.appendChild(e2);r.appendChild(rr);host.appendChild(r);}
-  var dv=b.value-then.value,dp=b.pace-then.pace;
-  head("Biological Age",then.value.toFixed(1),b.value.toFixed(1),yrsText(dv),yrsColor(dv),
-    Math.abs(dv)<0.05?"No real change":dv<0?"Getting younger":"Getting older");
-  head("Pace of Aging",then.pace.toFixed(1)+"x",b.pace.toFixed(1)+"x",paceDeltaTxt(dp),
-    dp<-0.05?"var(--recovery)":dp>0.05?"var(--warn)":"var(--ink3)",
-    Math.abs(dp)<0.05?"Holding steady":dp<0?"Slowing down: your recent habits beat your 6-month ones by more":"Speeding up: your recent habits beat your 6-month ones by less");
-  var hd=el("div","stept","By metric");hd.style.cssText="margin:14px 0 2px;font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em";
-  host.appendChild(hd);
-  var ch=metricChanges(b,then);
-  ch.filter(function(c){return !c.missing;}).sort(function(x,y){return (Math.abs(y.dPace)+Math.abs(y.dAge))-(Math.abs(x.dPace)+Math.abs(x.dAge));})
-    .forEach(function(c){
-      var m=c.m,w=chgWord(c),r=el("div","chg");r.style.cursor="pointer";
-      var bd=el("div","b");bd.appendChild(el("div","t",m.n));
-      var a=c.o.y30||c.o.x,z=c.r.y30||c.r.x;
-      bd.appendChild(el("div","s","Last 30 days: "+m.fmt(a.v)+" → "+m.fmt(z.v)));r.appendChild(bd);
-      var rr=el("div","r");var ww=el("div","w",w[0]);ww.style.color=w[1];rr.appendChild(ww);
-      rr.appendChild(el("div","e","age "+yrsText(c.dAge).replace(" yrs","")+" · pace "+paceDeltaTxt(c.dPace)));r.appendChild(rr);
-      r.addEventListener("click",function(){openHsMetric(m.k);});
-      host.appendChild(r);});
-  var miss=ch.filter(function(c){return c.missing;}).map(function(c){return c.m.n;});
-  if(miss.length){var mm=el("div","s");mm.style.cssText="font-size:12.5px;color:var(--ink3);padding:10px 0 12px;line-height:1.45";
-    mm.textContent="Not enough data to compare: "+miss.join(", ")+".";host.appendChild(mm);}
+
+// Bevel's line chart: hollow points, a glowing last point, a dotted average with its label
+function drawHsChart(host,ser,I,col,onPick,k){
+  var W=360,H=270,x0=8,x1=W-54,y0=16,y1=H-38,iw=x1-x0,ih=y1-y0,n=ser.length;
+  var pts=[];ser.forEach(function(p,i){if(p.v!==null)pts.push({i:i,v:p.v,date:p.date});});
+  var vals=pts.map(function(p){return p.v;}),lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+  var avg=mean(vals),need=HS_SPAN[k]||1;
+  if(hi-lo<need){var mid=(hi+lo)/2;lo=mid-need/2;hi=mid+need/2;}
+  var sp=hi-lo;lo-=sp*0.18;hi+=sp*0.28;
+  if(HS_ZERO[k]||lo<0)lo=Math.max(0,HS_ZERO[k]?0:lo);
+  var X=function(i){return x0+iw*i/Math.max(1,n-1);},Y=function(v){return y0+ih*(1-(v-lo)/(hi-lo));};
+  var s=sv("svg",{viewBox:"0 0 "+W+" "+H,class:"tv-svg"});
+  for(var g=0;g<4;g++){var yv=hi-(hi-lo)*g/3,yy=Y(yv);
+    s.appendChild(sv("line",{x1:0,x2:W,y1:yy,y2:yy,class:g===3?"tv-axis":"tv-grid"}));
+    var tl=sv("text",{x:W-4,y:yy-7,"text-anchor":"end",class:"tv-ylab"});tl.textContent=I.ax(yv);s.appendChild(tl);}
+  for(var q=0;q<5;q++){var ii=Math.round((n-1)*q/4),xl=sv("text",{x:clamp(X(ii),22,W-70),y:H-12,"text-anchor":"middle",class:"tv-xlab"});
+    xl.textContent=dshort(ser[ii].date);s.appendChild(xl);}
+  var gid="hsg"+(++gradSeq),defs=sv("defs"),lg=sv("linearGradient",{id:gid,x1:0,x2:0,y1:0,y2:1});
+  lg.appendChild(sv("stop",{offset:0,"stop-color":col,"stop-opacity":.22}));lg.appendChild(sv("stop",{offset:1,"stop-color":col,"stop-opacity":0}));
+  defs.appendChild(lg);s.appendChild(defs);
+  var line=pts.map(function(p){return X(p.i).toFixed(1)+","+Y(p.v).toFixed(1);});
+  s.appendChild(sv("path",{d:"M"+line.join(" L")+" L"+X(pts[pts.length-1].i)+","+y1+" L"+X(pts[0].i)+","+y1+" Z",fill:"url(#"+gid+")"}));
+  s.appendChild(sv("path",{d:"M"+line.join(" L"),fill:"none",stroke:col,"stroke-width":3,"stroke-linejoin":"round","stroke-linecap":"round"}));
+  // points
+  pts.forEach(function(p,j){var last=j===pts.length-1;
+    if(last)s.appendChild(sv("circle",{cx:X(p.i),cy:Y(p.v),r:12,fill:col,opacity:.22}));
+    s.appendChild(sv("circle",{cx:X(p.i),cy:Y(p.v),r:last?7:5.5,fill:last?col:"var(--sheet)",stroke:last?"var(--sheet)":col,"stroke-width":last?2.5:2.4}));});
+  // average
+  var ay=Y(avg);s.appendChild(sv("line",{x1:0,x2:W,y1:ay,y2:ay,stroke:col,"stroke-width":2.4,"stroke-dasharray":"1.5 5","stroke-linecap":"round"}));
+  var at="Avg. "+I.big(avg)[0]+(I.big(avg)[1]===" bpm"?" bpm":I.big(avg)[1]),aw=at.length*7.6+22;
+  s.appendChild(sv("rect",{x:W/2-aw/2,y:ay-14,width:aw,height:28,rx:14,fill:col}));
+  var tt=sv("text",{x:W/2,y:ay+5,"text-anchor":"middle",fill:"#fff","font-size":14,"font-weight":650});tt.textContent=at;s.appendChild(tt);
+  var guide=sv("line",{y1:y0,y2:y1,class:"tv-guide",style:"display:none"}),ring=sv("circle",{r:8,fill:"none",stroke:col,"stroke-width":3,style:"display:none"});
+  s.appendChild(guide);s.appendChild(ring);
+  function pick(cx){var r=s.getBoundingClientRect(),x=(cx-r.left)/r.width*W,best=null;
+    pts.forEach(function(p){if(!best||Math.abs(X(p.i)-x)<Math.abs(X(best.i)-x))best=p;});
+    if(!best)return;guide.setAttribute("x1",X(best.i));guide.setAttribute("x2",X(best.i));guide.style.display="";
+    ring.setAttribute("cx",X(best.i));ring.setAttribute("cy",Y(best.v));ring.style.display="";onPick(best);}
+  function rel(){guide.style.display="none";ring.style.display="none";onPick(null);}
+  s.addEventListener("pointerdown",function(e){pick(e.clientX);});
+  s.addEventListener("pointermove",function(e){if(e.buttons||e.pointerType==="mouse")pick(e.clientX);});
+  s.addEventListener("pointerup",function(e){if(e.pointerType!=="mouse")rel();});
+  s.addEventListener("pointerleave",rel);
+  host.appendChild(s);
 }
 
 /* ---- log a strength workout by hand ---- */
@@ -4775,7 +5033,7 @@ function go(tab){
   window.scrollTo({top:0});
 }
 $("tabs").addEventListener("click",function(e){var b=e.target.closest("button[data-tab]");if(b)go(b.dataset.tab);});
-function renderAll(){bust();renderHome();if(S.tab==="bio"){renderBio();renderBiomarkers();}}
+function renderAll(){bust();renderHome();if(S.tab==="bio"){renderBio();renderBiomarkers();}if(HSV)renderHsMetric();}
 
 try{
   var ic=$("appIcon").getAttribute("href");
