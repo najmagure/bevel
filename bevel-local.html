@@ -315,6 +315,15 @@
     display:grid;place-items:center;flex-shrink:0}
   .sendb svg{width:19px;height:19px} .sendb:disabled{opacity:.35}
   .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .bseg{display:flex;background:var(--seg-bg);border-radius:999px;padding:3px;margin:2px 0 12px}
+  .bseg button{flex:1;border:none;background:none;border-radius:999px;padding:8px 0;font-size:14px;font-weight:600;color:var(--ink3);cursor:pointer;font-family:inherit}
+  .bseg button.on{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.12)}
+  .chg{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--hair)}
+  .chg:last-child{border-bottom:none}
+  .chg .b{flex:1;min-width:0}.chg .t{font-size:15px;font-weight:600}.chg .s{font-size:12.5px;color:var(--ink3);margin-top:2px;line-height:1.45}
+  .chg .r{text-align:right;flex-shrink:0}.chg .w{font-size:14px;font-weight:650}.chg .e{font-size:12px;color:var(--ink3);margin-top:2px;font-variant-numeric:tabular-nums}
+  .chg .big{font-size:17px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .ptrail{font-size:13px;color:var(--ink3);margin-top:8px;font-variant-numeric:tabular-nums}
   .chip{border:1px solid var(--hair);background:var(--card2);color:var(--ink2);border-radius:999px;padding:8px 14px;
     font-size:13.5px;cursor:pointer}
   .typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ink3);margin-right:3px;
@@ -595,6 +604,14 @@
       <div id="bioPace" style="text-align:center;margin:-6px 0 10px"></div>
       <div id="bioNote" style="font-size:12.5px;color:var(--ink3);text-align:center;line-height:1.45;margin:0 16px 8px"></div>
       <button class="btn sec wide" id="bioWhy" style="display:none;margin-top:6px">How this is worked out</button>
+    </div>
+
+    <div id="bioChangeWrap" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px">
+        <div style="font-size:21px;font-weight:700;letter-spacing:-.03em">What Changed</div>
+        <div style="font-size:13px;color:var(--ink3)" id="bioChangeSince"></div>
+      </div>
+      <div class="card" style="padding:12px 15px 4px" id="bioChange"></div>
     </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px">
@@ -915,19 +932,21 @@ function solve(A,b){   // Gaussian elimination with partial pivoting
    Tested on your own Bevel days: if nothing has drifted it costs almost nothing (2.25 → ~2.3 points),
    and if Bevel shifts by 8 points it's corrected within 3–7 entered days. Recovery and Sleep only move
    the offset, since their shape is already fitted to ~100 of your days.
-   Stress and Energy Bank re-fit their own model settings instead, so the chart, highs and lows move too. ---- */
+   Energy Bank re-fits its own charge and drain rates instead. ---- */
 var CAL_INTERNAL={recoveryScore:1,sleepScore:1,stressScore:1,strainScore:1};
 function rawVal(k,ds){
   var e=entryFor(ds);
   if(k==="strainScore"){if(!e)return null;var t=trimpOf(e);return t?strainFromTrimp(t.T):null;}
   if(k==="recoveryScore"){var rf=e?recFeats(e):null;return rf?clamp(dot(recW(rf.exact),rf.x),1,99):null;}
   if(k==="sleepScore"){var sf=e?sleepFeatsOf(e):null;return sf?clamp(dot(SLP0,sf.x),1,100):null;}
+  if(k==="sleepC")return sleepConsistencyRaw(ds);
   var m=M[k];if(!m)return null;
   if(m.rawAt){var a=m.rawAt(ds);return a===null||a===undefined||!isFinite(a)?null:Number(a);}
   if(!e)return null;var g=(m.rawGet||m.get)(e);return g===null||g===undefined||!isFinite(g)?null:Number(g);
 }
 function calLinFit(k){
   return memo("cl|"+k,function(){
+    if(!calField(k))return null;
     var src=calStore(k);var rows=[],td=dnum(today());
     Object.keys(src).forEach(function(d){var y=Number(src[d]),x=rawVal(k,d);if(x===null||!isFinite(y))return;rows.push({d:d,x:x,y:y});});
     if(!rows.length)return null;
@@ -936,7 +955,8 @@ function calLinFit(k){
     var sig=kd==="clock"?10:kd==="dur"||kd==="sdur"?15:kd==="pct"?3:Math.max(0.05*mu,0.5);
     var sdA=kd==="clock"?60:kd==="dur"||kd==="sdur"?20:kd==="pct"?4:0.06*mu+0.5,sdB=kd==="clock"?0.001:0.1;
     if(k==="recoveryScore"||k==="sleepScore")sdB=0.02;
-    if(k==="strainScore"){sig=4;sdA=8;sdB=0.15;}   // this site's Strain is deliberately stricter, so allow a real rescale
+    if(k==="strainScore"){sig=4;sdA=8;sdB=0.15;}
+    if(k==="sleepC"){sig=4;sdA=20;sdB=0.3;}   // a different formula from Bevel's, so allow a real offset and rescale   // this site's Strain is deliberately stricter, so allow a real rescale
     var A=[[1/(sdA*sdA),0],[0,1/(sdB*sdB)]],bb=[0,1/(sdB*sdB)];
     rows.forEach(function(r){var wt=Math.pow(0.5,Math.max(0,td-dnum(r.d))/120)/(sig*sig),x=[1,r.x];
       for(var i=0;i<2;i++){bb[i]+=wt*x[i]*r.y;for(var j=0;j<2;j++)A[i][j]+=wt*x[i]*x[j];}});
@@ -950,30 +970,12 @@ function calLinFit(k){
 }
 function calLimit(k,r,v){var m=M[k];
   if(k==="recoveryScore")return clamp(r,1,99);
-  if(k==="strainScore"||(m&&unitOf(m)==="%"))return clamp(r,0,100);
+  if(k==="strainScore"||k==="sleepC"||(m&&unitOf(m)==="%"))return clamp(r,0,100);
   if(v>=0&&k!=="sleepBank")return Math.max(0,r);return r;}
 function calApply(k,v){var f=calLinFit(k);return f?calLimit(k,f.a+f.b*v,v):v;}
 function calSlope(k){var f=calLinFit(k);return f?f.b:1;}
 
-/* ---- Stress: re-fit the two settings behind every 5-minute reading ---- */
-function stressFit(){
-  return memo("cal|stress",function(){
-    var src=S.calib.m.stressScore;if(!src)return null;var rows=[],td=dnum(today());
-    Object.keys(src).forEach(function(d){var e=entryFor(d),H=e?stressHR(e):null,y=Number(src[d]);
-      if(H&&isFinite(y))rows.push({d:d,H:H,y:y,wt:Math.pow(0.5,Math.max(0,td-dnum(d))/120)});});
-    if(!rows.length)return null;
-    function sc(H,a,b){var t=0;for(var i=0;i<H.slots.length;i++)t+=clamp(a*100*(H.slots[i].h/H.ref-1)+b,0,100);return t/H.slots.length;}
-    var best=null;
-    for(var a=0.4;a<=2.201;a+=0.05)for(var b=0;b<=45;b+=1){
-      var L=Math.pow((a-SW.a)/0.35,2)+Math.pow((b-SW.b)/8,2);
-      rows.forEach(function(r){L+=r.wt*Math.pow((sc(r.H,a,b)-r.y)/3,2);});
-      if(!best||L<best.L)best={L:L,a:a,b:b};}
-    return {a:best.a,b:best.b,n:rows.length,
-      before:mean(rows.map(function(r){return Math.abs(Math.round(sc(r.H,SW.a,SW.b))-r.y);})),
-      after:mean(rows.map(function(r){return Math.abs(Math.round(sc(r.H,best.a,best.b))-r.y);}))};
-  });
-}
-function swP(){var f=stressFit();return f?{a:f.a,b:f.b}:{a:SW.a,b:SW.b};}
+function swP(){return {a:SW.a,b:SW.b};}
 
 /* ---- Energy Bank: re-fit how fast sleep charges it and waking hours drain it ---- */
 function energyFit(){
@@ -999,34 +1001,22 @@ function energyFit(){
 function energyParams(){var f=energyFit();return f?{kc:f.kc,kd:f.kd}:{kc:1,kd:1};}
 
 /* ---- the Calibrate sheet ---- */
+// Only numbers this site works out with a formula. Things read straight from Apple Health (time asleep,
+// sleep stages, sleep and wake times, steps, energy, VO₂ max, weight, breathing rate, resting HR) already
+// match Bevel exactly, because both read the same records.
 var CAL_FIELDS=[
   {g:"Scores",k:"recoveryScore",n:"Recovery",kind:"pct"},
   {g:"Scores",k:"sleepScore",n:"Sleep Score",kind:"pct"},
   {g:"Scores",k:"strainScore",n:"Strain",kind:"pct"},
-  {g:"Scores",k:"stressScore",n:"Stress",kind:"num"},
   {g:"Scores",k:"energy",n:"Energy Bank",kind:"pct"},
-  {g:"Recovery",k:"hrvSleep",n:"Resting HRV",kind:"num",u:"ms"},
-  {g:"Recovery",k:"hrSleep",n:"Resting HR",kind:"num",u:"bpm"},
-  {g:"Recovery",k:"respRate",n:"Respiratory Rate",kind:"num",u:"rpm"},
-  {g:"Sleep",k:"asleepMin",n:"Time Asleep",kind:"dur"},
-  {g:"Sleep",k:"remMin",n:"REM Sleep",kind:"dur"},
-  {g:"Sleep",k:"deepMin",n:"Deep Sleep",kind:"dur"},
-  {g:"Sleep",k:"hrDip",n:"Heart Rate Dip",kind:"pct"},
-  {g:"Sleep",k:"sleepBank",n:"Sleep Bank",kind:"sdur"},
-  {g:"Sleep",k:"sleepTime",n:"Sleep Time",kind:"clock"},
-  {g:"Sleep",k:"wakeTime",n:"Wake Time",kind:"clock"},
-  {g:"Strain",k:"exerciseMin",n:"Exercise Duration",kind:"dur"},
-  {g:"Strain",k:"hrDay",n:"Daytime HR",kind:"num",u:"bpm"},
-  {g:"Strain",k:"totalKJ",n:"Total Energy",kind:"num",u:"kcal"},
-  {g:"Strain",k:"steps",n:"Step Count",kind:"num"},
-  {g:"Stress",k:"nonActStress",n:"Non-Activity Stress",kind:"num"},
-  {g:"Stress",k:"sleepStress",n:"Sleep Stress",kind:"num"},
-  {g:"Biology",k:"hrvBase",n:"HRV Baselines",kind:"num",u:"ms"},
-  {g:"Biology",k:"rhrBase",n:"RHR Baselines",kind:"num",u:"bpm"},
-  {g:"Biology",k:"sleepBase",n:"Sleep Baselines",kind:"dur"},
-  {g:"Biology",k:"vo2max",n:"VO₂ Max",kind:"num"},
-  {g:"Biology",k:"weight",n:"Weight",kind:"num",u:"wt"},
-  {g:"Biology",k:"bodyFat",n:"Body Fat",kind:"num",u:"%"}
+  {g:"Other",k:"sleepC",n:"Sleep Consistency",kind:"pct"},
+  {g:"Other",k:"hrvSleep",n:"Resting HRV",kind:"num",u:"ms"},
+  {g:"Other",k:"hrDip",n:"Heart Rate Dip",kind:"pct"},
+  {g:"Other",k:"sleepBank",n:"Sleep Bank",kind:"sdur"},
+  {g:"Other",k:"hrDay",n:"Daytime HR",kind:"num",u:"bpm"},
+  {g:"Other",k:"hrvBase",n:"HRV Baselines",kind:"num",u:"ms"},
+  {g:"Other",k:"rhrBase",n:"RHR Baselines",kind:"num",u:"bpm"},
+  {g:"Other",k:"sleepBase",n:"Sleep Baselines",kind:"dur"}
 ];
 function calField(k){for(var i=0;i<CAL_FIELDS.length;i++)if(CAL_FIELDS[i].k===k)return CAL_FIELDS[i];return null;}
 function calStore(k,make){if(k==="recoveryScore")return S.calib.rec;if(k==="sleepScore")return S.calib.sleep;if(k==="energy")return S.calib.energy;
@@ -1072,11 +1062,11 @@ function calSite(f,d,min){
   if(f.k==="sleepScore"){var q=e?sleepScore(e):null;return q?q.value:null;}
   if(f.k==="strainScore"){var t=e?strainScore(e):null;return t?t.value:null;}
   if(f.k==="stressScore"){var x=e?stressScore(e):null;return x?x.value:null;}
+  if(f.k==="sleepC"){var c=sleepConsistencyDay(d);return c===null?null:Math.round(c);}
   if(f.k==="energy"){var tr=energyTracks()[d];if(!tr)return null;var v=tr.series[Math.min(95,Math.floor((min||0)/15))];return Math.round(v===null||v===undefined?tr.end:v);}
   return dayVal(f.k,d);
 }
 function calGap(k){
-  if(k==="stressScore")return stressFit();
   if(k==="energy")return energyFit();
   return calLinFit(k);
 }
@@ -1093,10 +1083,9 @@ function openCalibrate(ds,focus){
     var c=el("div","card");
     var df=el("div","fld");df.appendChild(el("label",null,"Day"));
     var di=el("input");di.type="date";di.max=today();di.value=ds;df.appendChild(di);c.appendChild(df);
-    var inputs=[],more=el("details","calmore"),lastG=null,box=c;
-    more.appendChild(el("summary",null,"All other measures"));
+    var inputs=[],lastG="Scores",box=c;
     CAL_FIELDS.forEach(function(f){
-      if(f.g!=="Scores"){box=more;if(f.g!==lastG){var gh=el("div","stept",f.g);gh.style.margin="14px 0 8px";more.appendChild(gh);}}
+      if(f.g!==lastG){var gh=el("div","stept","Other calculated measures");gh.style.cssText="margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--hair)";c.appendChild(gh);}
       lastG=f.g;
       var fd=el("div","fld calf");fd.setAttribute("data-k",f.k);
       fd.appendChild(el("label",null,f.n+(f.kind==="pct"||f.kind==="num"?(calUnit(f)?" ("+calUnit(f)+")":f.kind==="pct"?" (%)":""):"")));
@@ -1112,24 +1101,23 @@ function openCalibrate(ds,focus){
       box.appendChild(fd);
       inputs.push({f:f,inp:inp,tm:tm,hint:hint,fd:fd});
     });
-    c.appendChild(more);
+    function tmMin(x){var p=String(x.tm.value||"").split(":");return p.length<2?0:Number(p[0])*60+Number(p[1]);}
+    function hintFor(x){var d=di.value||today(),site=calSite(x.f,d,x.tm?tmMin(x):0);
+      x.hint.textContent=site===null?"This site has no value for that day"+(x.tm?" and time":"")+".":"This site shows "+calFmt(x.f,site)+(x.tm?" at that time.":".");
+      x.hint.style.color="";}
     function fill(){
-      var d=di.value||today(),anyMore=false;
+      var d=di.value||today();
       inputs.forEach(function(x){
         var sv=calSaved(x.f.k,d);
         if(x.f.k==="energy"){var mn=sv&&has(sv.min)?sv.min:(d===today()?nowMin():1439);
           x.tm.value=pad2(Math.floor(mn/60))+":"+pad2(mn%60);x.inp.value=sv?String(sv.v):"";}
         else x.inp.value=sv===null?"":x.f.kind==="pct"||x.f.kind==="num"?String(Math.round(sv*10)/10):calFmt(x.f,sv);
-        if(sv!==null&&x.f.g!=="Scores")anyMore=true;
-        var mn2=x.tm?(function(){var p=x.tm.value.split(":");return Number(p[0])*60+Number(p[1]||0);})():0;
-        var site=calSite(x.f,d,mn2);
-        x.hint.textContent=site===null?"This site has no value for that day.":"This site shows "+calFmt(x.f,site)+".";
-        x.hint.style.color="";
+        hintFor(x);
       });
-      if(anyMore||(focus&&calField(focus)&&calField(focus).g!=="Scores"))more.open=true;
     }
     fill();di.addEventListener("change",function(){focus=null;fill();});
-    inputs.forEach(function(x){if(x.tm)x.tm.addEventListener("change",fill);});
+    // changing the time only updates what the site shows at that time; it never resets your entry
+    inputs.forEach(function(x){if(x.tm){x.tm.addEventListener("change",function(){hintFor(x);});x.tm.addEventListener("input",function(){hintFor(x);});}});
     var st=el("div");
     var sv2=el("button","btn wide","Save");sv2.style.marginTop="6px";
     sv2.addEventListener("click",function(){
@@ -1140,9 +1128,9 @@ function openCalibrate(ds,focus){
       if(bad){st.className="stat err";st.textContent="Check the "+(bad===1?"field":"fields")+" in red.";return;}
       upd.forEach(function(p){var x=p[0],r=p[1],store=calStore(x.f.k,!r.empty);
         if(r.empty){delete store[d];return;}
-        if(x.f.k==="energy"){var q=x.tm.value.split(":");store[d]={v:r.v,min:Number(q[0])*60+Number(q[1]||0)};}
+        if(x.f.k==="energy"){store[d]={v:r.v,min:tmMin(x)};}
         else store[d]=r.v;n++;});
-      Object.keys(S.calib.m).forEach(function(k){if(!Object.keys(S.calib.m[k]).length)delete S.calib.m[k];});
+      Object.keys(S.calib.m).forEach(function(k){if(!calField(k)||!Object.keys(S.calib.m[k]).length)delete S.calib.m[k];});
       saveC();bust();renderAll();
       openCalibrate(d,focus);
       toast(n?"Saved "+n+" value"+(n===1?"":"s")+" for "+sdate(d)+".":"Cleared "+sdate(d)+".");
@@ -2138,6 +2126,7 @@ var ICO={
   bank:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8zM4 12v6H3v2h18v-2h-1v-6h-2v6h-3v-6h-2v6h-3v-6z"/></svg>',
   sprout:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21v-7M12 14C12 9 8 6 4 6c0 5 4 8 8 8zm0 0c0-4 3-7 7-7 0 4-3 7-7 7z"/></svg>',
   zzz:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h7l-7 9h7v2H2v-2l7-9H4zm10 6h6l-6 6h6v2h-9v-2l6-6h-3z"/></svg>',
+  dumbbell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6.5 7v10M3.5 9.5v5M17.5 7v10M20.5 9.5v5M6.5 12h11"/></svg>',
   timer:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>',
   scale:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3.5"/><path d="M12 9v3M9 9.8 12 12"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 14.4L6.6 12.2 8 10.8l2.8 2.8 5.4-5.4 1.4 1.4z"/></svg>',
@@ -2791,7 +2780,7 @@ function openDetail(k){
   var why=el("button","btn sec wide");why.textContent="How "+cfg.title+" is worked out";
   why.style.margin="16px 0 26px";
   why.addEventListener("click",function(){explainSheet(k==="energy"?"energy":k);});
-  var CALK={recovery:"recoveryScore",sleep:"sleepScore",strain:"strainScore",stress:"stressScore",energy:"energy"};
+  var CALK={recovery:"recoveryScore",sleep:"sleepScore",strain:"strainScore",energy:"energy"};
   if(CALK[k]){
     var cb=el("button","btn sec wide","Bevel shows a different number?");cb.style.margin="-16px 0 26px";
     cb.addEventListener("click",function(){openCalibrate(viewDateStr(),CALK[k]);});
@@ -3476,13 +3465,32 @@ function ivInter(A,B){var i=0,j=0,t=0;
   while(i<A.length&&j<B.length){var a=Math.max(A[i][0],B[j][0]),b=Math.min(A[i][1],B[j][1]);if(b>a)t+=b-a;
     if(A[i][1]<B[j][1])i++;else j++;}
   return t;}
+/* Bevel-style: how steady your bedtime and wake time were over the last 7 nights. For each,
+   the typical distance (in minutes) from that week's usual time; every 4 minutes of drift
+   costs 1 point. 30 min of drift ≈ 92%, 1 hour ≈ 85%, 2 hours ≈ 70%. Needs 4 of the 7 nights.
+   (The old WHOOP-style overlap score read about 25 points under Bevel.) Calibratable to Bevel. */
+function mainSleepTimes(ds){
+  var p=primaryOf(entryFor(ds));
+  if(!p||!has(p.sw)||!has(p.ew)||!(p.asleep>=180))return null;
+  return [p.sw,p.ew];
+}
+function circSpread(v){   // mean absolute distance from the circular mean, in minutes
+  var sx=0,sy=0;v.forEach(function(m){var a=m/1440*2*Math.PI;sx+=Math.cos(a);sy+=Math.sin(a);});
+  var c=(Math.atan2(sy,sx)/(2*Math.PI)*1440+1440)%1440;
+  return mean(v.map(function(m){var d=((m-c)%1440+1440)%1440;return d>720?1440-d:d;}));
+}
+function sleepConsistencyRaw(date){
+  return memo("scr|"+date,function(){
+    if(!mainSleepTimes(date))return null;
+    var on=[],off=[];
+    for(var k=0;k<7;k++){var t=mainSleepTimes(addDays(date,-k));if(t){on.push(t[0]);off.push(t[1]);}}
+    if(on.length<4)return null;
+    return clamp(100-0.25*(circSpread(on)+circSpread(off))/2,0,100);
+  });
+}
 function sleepConsistencyDay(date){
   return memo("sc|"+date,function(){
-    var A=sleepIv(entryFor(date),0);if(!A.length)return null;
-    var v=[];
-    for(var k=1;k<=4;k++){var B=sleepIv(entryFor(addDays(date,-k)),k*1440);if(!B.length)continue;
-      var I=ivInter(A,B),U=ivLen(A)+ivLen(B)-I;if(U>0)v.push(I/U);}
-    return v.length>=2?100*mean(v):null;
+    var r=sleepConsistencyRaw(date);return r===null?null:clamp(calApply("sleepC",r),0,100);
   });
 }
 /* ---- resting heart rate the way WHOOP takes it: low and steady during sleep, not a daytime
@@ -3520,6 +3528,14 @@ function latestWithin(field,end,days){
 }
 var STRENGTH_RE=/Strength|CoreTraining/;
 function isStrength(w){return w&&STRENGTH_RE.test(String(w.type||""))&&(w.dur||0)>=5;}
+/* Strength minutes for a day: watch workouts from your export, or the ones you logged here,
+   whichever is more. So a logged session isn't counted twice once the export brings in the same one. */
+function strengthMinDay(e){
+  var w=0,l=0;
+  if(e){(e.workouts||[]).forEach(function(x){if(isStrength(x))w+=x.dur;});
+    (e.strLog||[]).forEach(function(x){l+=Number(x.min)||0;});}
+  return {watch:w,logged:l,min:Math.max(w,l)};
+}
 // the day before your newest steps reading = the last day your full export covers
 function exportThrough(){
   for(var i=S.entries.length-1;i>=0;i--)if(has(S.entries[i].steps))return S.entries[i].date;
@@ -3537,9 +3553,9 @@ function healthspanMetrics(end,days){
       if(has(e.asleepMin)&&e.asleepMin>=60)sl.push(Number(e.asleepMin));
       var nl=nightLow(e);if(nl!==null)rh.push(nl);
       if(has(e.vo2max))vo.push(Number(e.vo2max));
-      if(d>=dToday)continue;                                  // today isn't over yet
-      if(has(e.steps)){cov++;if(e.steps>=500)st.push(Number(e.steps));
-        (e.workouts||[]).forEach(function(w){if(isStrength(w))strMin+=w.dur;});}
+      var sm=strengthMinDay(e);
+      if(d>=dToday){if(sm.logged>0){cov++;strMin+=sm.min;}continue;}   // today isn't over: only a logged workout counts
+      if(has(e.steps)||sm.logged>0){cov++;if(has(e.steps)&&e.steps>=500)st.push(Number(e.steps));strMin+=sm.min;}
       if(e.hb||e.zoneMin)hrDays.push(e);
     }
     var rhr=rh.length>=Math.round(10*need)?mean(rh):null;
@@ -3570,7 +3586,7 @@ function vo2Target(age){var f=[[20,40],[30,38],[40,35],[50,32],[60,29],[70,26],[
   return bySex(t(f),t(m));}
 function capY(y,lo,hi){return clamp(y,lo,hi);}
 var HSM=[
-  {k:"sleepH",g:"Sleep",n:"Hours of Sleep",i:"bed",
+  {k:"sleepH",g:"Sleep",n:"Time Asleep",i:"bed",
     s:"Your average time asleep per night, naps included.",
     tgt:function(){return 7;},tgtTxt:function(){return "7–9h";},
     fmt:function(v){return hm(v*60);},
@@ -3578,34 +3594,34 @@ var HSM=[
     how:"Each hour under 7 adds about 0.6 years and 7–9 hours adds nothing. Over 9 hours adds a little, since long sleep also tracks with higher mortality. Capped at +3 years. Source: Liu et al., 2017, a meta-analysis of sleep length and mortality.",
     tip:"Going to bed 30 minutes earlier on work nights is usually the easiest win."},
   {k:"sleepC",g:"Sleep",n:"Sleep Consistency",i:"moon",
-    s:"How closely each night's sleep and wake times match the 4 nights before it, from 0 to 100%.",
+    s:"How steady your bedtime and wake time were over the last 7 nights, from 0 to 100%, the way Bevel scores it.",
     tgt:function(){return 70;},tgtTxt:function(){return "70%+";},
     fmt:function(v){return Math.round(v)+"%";},
     yrs:function(v){return capY(v<70?0.09*(70-v):-0.04*(v-70),-1,3);},
-    how:"For each night, the overlap with the same clock times on each of the 4 nights before, divided by the combined time asleep. Each point under 70% adds 0.09 years, up to 3. Each point over 70% takes off 0.04 years, up to 1. Source: Windred et al., 2024 (UK Biobank), where regular sleep timing predicted mortality better than sleep length.",
+    how:"Each day looks back 7 nights at your main sleep. For bedtime and for wake time, it takes how far each night typically sat from that week's usual time. Every 4 minutes of drift costs 1 point: 30 minutes ≈ 92%, an hour ≈ 85%, two hours ≈ 70%. If you add Bevel's daily numbers in Calibrate, it shifts to match them. Each point under 70% adds 0.09 years, up to 3. Each point over 70% takes off 0.04 years, up to 1. Source: Windred et al., 2024 (UK Biobank), where regular sleep timing predicted mortality better than sleep length.",
     tip:"Keep your wake-up time within about 30 minutes every day, weekends included."},
-  {k:"z13",g:"Strain",n:"Time in HR Zones 1–3",i:"heart",
+  {k:"z13",g:"Activity",n:"Time in HR Zones 1–3",i:"heart",
     s:"Weekly minutes at light-to-moderate effort: 40–80% of your heart-rate reserve.",
     tgt:function(a){return lerpAge(a,20,100,70,70);},tgtTxt:function(a){return Math.round(lerpAge(a,20,100,70,70))+"+ min/wk";},
     fmt:function(v){return fmtWk(v);},
     yrs:function(v,T){return 7*(v<T?0.22*(1-v/T):-0.08*Math.min(1,(v-T)/(2*T)));},
     how:"Heart-rate reserve is your max heart rate minus your resting heart rate, which is how WHOOP sets its zones. Zones 1–3 are 40–80% of it. Doing none adds about 1.5 years. Beyond the target, up to 0.6 years come off. Sources: Lee et al., 2022 and Ahmadi et al., 2022.",
     tip:"Brisk walks count. Three 35-minute walks a week covers it."},
-  {k:"z45",g:"Strain",n:"Time in HR Zones 4–5",i:"bolt",
+  {k:"z45",g:"Activity",n:"Time in HR Zones 4–5",i:"bolt",
     s:"Weekly minutes of hard effort: above 80% of your heart-rate reserve.",
     tgt:function(a){return lerpAge(a,20,10,70,7);},tgtTxt:function(a){return Math.round(lerpAge(a,20,10,70,7))+"+ min/wk";},
     fmt:function(v){return fmtWk(v);},
     yrs:function(v,T){return 7*(v<T?0.16*(1-v/T):-0.25*Math.min(1,(v-T)/45));},
     how:"Vigorous minutes carry roughly twice the benefit of moderate ones. Doing none adds about 1.1 years. Up to 1.75 years come off once you're 45 minutes a week past the target. Sources: Lee et al., 2022 and Ahmadi et al., 2022.",
     tip:"A few short intervals (hills, stairs, a fast finish) add these minutes quickly."},
-  {k:"str",g:"Strain",n:"Strength Activity Time",i:"dumbbell",
-    s:"Weekly minutes of strength or core workouts recorded on your watch.",
+  {k:"str",g:"Activity",n:"Strength Training",i:"dumbbell",
+    s:"Weekly minutes of strength or core workouts, from your watch or logged here with the + button.",
     tgt:function(){return 40;},tgtTxt:function(){return "40+ min/wk";},
     fmt:function(v){return fmtWk(v);},
     yrs:function(v){return 10*0.186*Math.pow(1-Math.min(v,40)/40,1.5);},
     how:"Mortality is lowest at about 40 minutes of muscle-strengthening work a week, about 17% lower than doing none. None adds about 1.9 years. Most of the gain comes from the first sessions. Workouts under 5 minutes aren't counted. Source: Momma et al., 2022.",
-    tip:"Two 20-minute strength sessions a week reach the target. Start the Strength workout on your watch so it's counted."},
-  {k:"steps",g:"Strain",n:"Daily Steps",i:"steps",
+    tip:"Two 20-minute strength sessions a week reach the target. Start a Functional or Traditional Strength Training workout on your watch, then do a full export. Or log it right away with + → Strength workout."},
+  {k:"steps",g:"Activity",n:"Step Count",i:"steps",
     s:"Your average steps per day on days you wore your watch.",
     tgt:function(a){return lerpAge(a,20,8000,70,5600);},tgtTxt:function(a){return (Math.round(lerpAge(a,20,8000,70,5600)/100)*100).toLocaleString()+"+/day";},
     fmt:function(v){return Math.round(v).toLocaleString()+"/day";},
@@ -3626,7 +3642,7 @@ var HSM=[
     yrs:function(v,T){return capY(10*0.8*0.012*(v-T),-3,3);},
     how:"Each beat above the target adds about 0.1 years, and each beat below it takes off the same, capped at ±3 years. Sources: Zhang et al., 2016 and Aune et al., 2017 (about 9–17% higher mortality per 10 bpm). WHOOP measures it during sleep, so it isn't the same as Apple Health's daytime resting heart rate.",
     tip:"Aerobic fitness, less alcohol, and not eating or training hard late all bring it down."},
-  {k:"lean",g:"Fitness",n:"Lean Body Mass",i:"drop",
+  {k:"lean",g:"Fitness",n:"Lean Body Mass %",i:"drop",
     s:"100 minus your body fat %, from your latest reading in the last 12 months.",
     tgt:function(){return bySex(67,80);},tgtTxt:function(){return Math.round(bySex(67,80))+"%+";},
     fmt:function(v){return v.toFixed(1)+"%";},
@@ -3636,8 +3652,16 @@ var HSM=[
 ];
 function fmtWk(v){return v>=60?hm(v)+"/wk":Math.round(v)+" min/wk";}
 
+// the day Biological Age runs to: the selected day, or your newest data, or a strength workout
+// you logged after that (so a session logged today shows up today)
+function bioEnd(){
+  var d=viewDateStr();if(S.viewDate)return d;
+  for(var i=S.entries.length-1;i>=0;i--){var e=S.entries[i];if(e.date<=d)break;
+    if(e.date<=today()&&e.strLog&&e.strLog.length)return e.date;}
+  return d;
+}
 function whoopAge(end){
-  end=end||viewDateStr();
+  end=end||bioEnd();
   return memo("wa|"+end,function(){
     var age=ageOn(end);if(age===null)return {needsAge:true};
     var a=healthspanMetrics(end,182),b=healthspanMetrics(end,30),d6=0,d30=0,n=0;
@@ -3657,6 +3681,7 @@ function yrsColor(y){return y>0.05?"var(--warn)":y<-0.05?"var(--recovery)":"var(
 function renderBio(){
   var svgEl2=$("bioDial"),mid=$("bioMid"),why=$("bioWhy");
   svgEl2.innerHTML="";mid.innerHTML="";why.style.display="none";$("bioNote").textContent="";$("bioPace").innerHTML="";
+  $("bioChangeWrap").style.display="none";
   var b=whoopAge();
   var cx=160,cy=118,r=100,A0=200,A1=-20;
   function pt(d,rr){var a=d*Math.PI/180;return [cx+rr*Math.cos(a),cy+rr*Math.sin(a)];}
@@ -3702,6 +3727,13 @@ function renderBio(){
   var pv=el("b",null,b.pace.toFixed(1)+"x");pv.style.color=paceColor(b.pace);
   pc.appendChild(document.createTextNode("Pace of Aging "));pc.appendChild(pv);
   pc.addEventListener("click",openPaceSheet);$("bioPace").appendChild(pc);
+  var tr=paceTrail(b.end,4);
+  if(tr.length>=2){var pt2=el("div","ptrail");
+    pt2.appendChild(document.createTextNode("Weekly: "));
+    tr.forEach(function(w,i){if(i)pt2.appendChild(document.createTextNode(" → "));
+      var x=el("b",null,w.pace.toFixed(1)+"x");x.style.color=i===tr.length-1?paceColor(w.pace):"var(--ink2)";pt2.appendChild(x);});
+    $("bioPace").appendChild(pt2);}
+  renderBioChange(b);
   var thru=exportThrough();
   $("bioNote").textContent=(b.n<9?"Based on "+b.n+" of 9 metrics. ":"")+
     (thru?"Steps, workouts and VO₂ max are from your full export (through "+sdate(thru)+")."
@@ -3741,6 +3773,18 @@ function openPaceSheet(){
     [["Last 6 months",yrsText(b.delta)],["Last 30 days",yrsText(b.delta30)]].forEach(function(p){
       var r=el("div","r");r.appendChild(el("div","k",p[0]));r.appendChild(el("div","v",p[1]));kv.appendChild(r);});
     h.appendChild(kv);
+    var hist=paceTrail(b.end,8);
+    if(hist.length>=2){
+      h.appendChild(Object.assign(el("div","stept"),{textContent:"Week by week"}));
+      var kh=el("div","kv");
+      hist.slice().reverse().forEach(function(w,i,arr){var r=el("div","r");
+        r.appendChild(el("div","k",i===0?"This week":sdate(w.date)));
+        var nx=arr[i+1],v=el("div","v",w.pace.toFixed(1)+"x · "+w.value.toFixed(1)+" yrs");
+        if(nx){var dd=w.pace-nx.pace;v.appendChild(Object.assign(el("span",null," ("+paceDeltaTxt(dd)+")"),{}));
+          v.lastChild.style.color=dd<-0.05?"var(--recovery)":dd>0.05?"var(--warn)":"var(--ink3)";v.lastChild.style.fontWeight="500";}
+        r.appendChild(v);kh.appendChild(r);});
+      h.appendChild(kh);
+    }
     h.appendChild(Object.assign(el("div","stept"),{textContent:"Biggest changes this month"}));
     var kv2=el("div","kv"),ch=b.rows.filter(function(r){return r.x;}).map(function(r){return {m:r.m,d:r.years30-r.years};})
       .sort(function(x,y){return Math.abs(y.d)-Math.abs(x.d);}).slice(0,4);
@@ -3756,7 +3800,7 @@ function renderHealthspan(b){
   var host=$("hsList");if(!host)return;host.innerHTML="";
   if(!b||b.needsAge)return;
   var age=b.age;
-  ["Sleep","Strain","Fitness"].forEach(function(g){
+  ["Sleep","Activity","Fitness"].forEach(function(g){
     var hd=el("div","stept",g);hd.style.cssText="margin:"+(g==="Sleep"?"0":"16px")+" 4px 8px;color:var(--ink3);font-size:13px;text-transform:uppercase;letter-spacing:.04em";
     host.appendChild(hd);
     var c=el("div","card");c.style.padding="4px 15px";
@@ -3781,7 +3825,7 @@ function renderHealthspan(b){
 function openHsMetric(k){
   var b=whoopAge();if(!b||!b.rows)return;
   var rw=b.rows.filter(function(r){return r.m.k===k;})[0];if(!rw)return;
-  var m=rw.m,w=b.win||healthspanMetrics(viewDateStr(),182);
+  var m=rw.m,w=b.win||healthspanMetrics(bioEnd(),182);
   openSheet(function(h){
     sheetTitle(h,m.n,m.s+(k==="z13"&&w?" For you that's "+Math.round(w.L1)+"–"+Math.round(w.L4)+" bpm.":
       k==="z45"&&w?" For you that's above "+Math.round(w.L4)+" bpm.":""));
@@ -3796,11 +3840,130 @@ function openHsMetric(k){
     h.appendChild(kv);
     var f=el("div","fml");f.innerHTML="<b>How it's scored.</b> "+m.how;h.appendChild(f);
     var t=el("div","fml");t.style.marginTop="10px";t.innerHTML="<b>To improve it.</b> "+m.tip;h.appendChild(t);
+    if(k==="str"){
+      var ss=strengthSessions(b.end,42);
+      h.appendChild(Object.assign(el("div","stept"),{textContent:"Last 6 weeks"}));
+      var sk=el("div","kv");
+      if(!ss.length){var r0=el("div","r");r0.appendChild(el("div","k","No strength workouts found"));sk.appendChild(r0);}
+      ss.forEach(function(x){var r=el("div","r");r.style.alignItems="center";
+        r.appendChild(el("div","k",sdate(x.date)+" · "+strTypeName(x.type)+(x.src==="log"?" (logged)":" (watch)")));
+        r.appendChild(el("div","v",Math.round(x.min)+" min"));
+        if(x.src==="log"){var xb=el("button",null,"×");xb.setAttribute("aria-label","Remove");
+          xb.style.cssText="border:none;background:none;color:var(--ink3);font-size:20px;cursor:pointer;padding:0 0 0 10px";
+          xb.addEventListener("click",function(){removeStrLog(x.date,x.id);openHsMetric("str");});r.appendChild(xb);}
+        sk.appendChild(r);});
+      h.appendChild(sk);
+      var lb=el("button","btn wide","Log a strength workout");lb.addEventListener("click",function(){openStrengthLog();});h.appendChild(lb);
+      var nt=el("div","disc");nt.style.marginTop="8px";
+      nt.textContent="Watch workouts only arrive with a full Health export. The iPhone Shortcut refresh doesn't carry workouts, so log today's session here or wait for your next export.";
+      h.appendChild(nt);
+    }
     if(k==="lean"){var ab=el("button","btn sec wide","Add body fat %");ab.style.marginTop="12px";
       ab.addEventListener("click",function(){openOneLog("bodyFat");});h.appendChild(ab);}
     closeBtn(h);
   });
 }
+
+/* ---- what changed: this week's numbers against 1, 2 or 4 weeks ago ----
+   Both are worked out from today's data, so every number uses the same formula.
+   A metric's effect on Biological Age is the change in its 6-month years; its effect on
+   Pace is 2 × (change in its 30-day years − change in its 6-month years). They add up to
+   the totals, so you can see exactly which metric moved which number. */
+var BIO_CMP=7;
+function paceTrail(end,weeks){
+  var out=[];for(var k=weeks-1;k>=0;k--){var d=addDays(end,-7*k),w=whoopAge(d);
+    if(w&&has(w.pace))out.push({date:d,pace:w.pace,value:w.value});}
+  return out;
+}
+function metricChanges(now,then){
+  return now.rows.map(function(r){
+    var o=then.rows.filter(function(x){return x.m.k===r.m.k;})[0];
+    if(!r.x||!o||!o.x)return {m:r.m,r:r,missing:true};
+    var dAge=r.years-o.years,d30=r.years30-o.years30,dPace=2*(d30-dAge);
+    return {m:r.m,r:r,o:o,dAge:dAge,d30:d30,dPace:dPace};
+  });
+}
+function chgWord(c){
+  // judged on your last 30 days: that's what's actually changing right now
+  var t=c.d30;return t<-0.05?["Improving","var(--recovery)"]:t>0.05?["Worsening","var(--warn)"]:["Steady","var(--ink3)"];
+}
+function paceDeltaTxt(d){return Math.abs(d)<0.05?"±0.0x":(d>0?"+":"−")+Math.abs(d).toFixed(1)+"x";}
+function renderBioChange(b){
+  var wrap=$("bioChangeWrap"),host=$("bioChange");host.innerHTML="";
+  var then=whoopAge(addDays(b.end,-BIO_CMP));
+  wrap.style.display="block";
+  $("bioChangeSince").textContent="vs "+sdate(addDays(b.end,-BIO_CMP));
+  var seg=el("div","bseg");
+  [[7,"1 week"],[14,"2 weeks"],[28,"4 weeks"]].forEach(function(o){
+    var bt=el("button",BIO_CMP===o[0]?"on":null,o[1]);bt.type="button";
+    bt.addEventListener("click",function(){BIO_CMP=o[0];renderBioChange(b);});seg.appendChild(bt);});
+  host.appendChild(seg);
+  if(!then||!has(then.value)){host.appendChild(el("div","empty","Not enough data "+BIO_CMP/7+" week"+(BIO_CMP>7?"s":"")+" back to compare."));return;}
+  function head(t,a,z,dTxt,col,sub){
+    var r=el("div","chg");var bd=el("div","b");bd.appendChild(el("div","t",t));if(sub)bd.appendChild(el("div","s",sub));r.appendChild(bd);
+    var rr=el("div","r");rr.appendChild(el("div","big",a+" → "+z));var e2=el("div","w",dTxt);e2.style.color=col;rr.appendChild(e2);r.appendChild(rr);host.appendChild(r);}
+  var dv=b.value-then.value,dp=b.pace-then.pace;
+  head("Biological Age",then.value.toFixed(1),b.value.toFixed(1),yrsText(dv),yrsColor(dv),
+    Math.abs(dv)<0.05?"No real change":dv<0?"Getting younger":"Getting older");
+  head("Pace of Aging",then.pace.toFixed(1)+"x",b.pace.toFixed(1)+"x",paceDeltaTxt(dp),
+    dp<-0.05?"var(--recovery)":dp>0.05?"var(--warn)":"var(--ink3)",
+    Math.abs(dp)<0.05?"Holding steady":dp<0?"Slowing down: your recent habits beat your 6-month ones by more":"Speeding up: your recent habits beat your 6-month ones by less");
+  var hd=el("div","stept","By metric");hd.style.cssText="margin:14px 0 2px;font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em";
+  host.appendChild(hd);
+  var ch=metricChanges(b,then);
+  ch.filter(function(c){return !c.missing;}).sort(function(x,y){return (Math.abs(y.dPace)+Math.abs(y.dAge))-(Math.abs(x.dPace)+Math.abs(x.dAge));})
+    .forEach(function(c){
+      var m=c.m,w=chgWord(c),r=el("div","chg");r.style.cursor="pointer";
+      var bd=el("div","b");bd.appendChild(el("div","t",m.n));
+      var a=c.o.y30||c.o.x,z=c.r.y30||c.r.x;
+      bd.appendChild(el("div","s","Last 30 days: "+m.fmt(a.v)+" → "+m.fmt(z.v)));r.appendChild(bd);
+      var rr=el("div","r");var ww=el("div","w",w[0]);ww.style.color=w[1];rr.appendChild(ww);
+      rr.appendChild(el("div","e","age "+yrsText(c.dAge).replace(" yrs","")+" · pace "+paceDeltaTxt(c.dPace)));r.appendChild(rr);
+      r.addEventListener("click",function(){openHsMetric(m.k);});
+      host.appendChild(r);});
+  var miss=ch.filter(function(c){return c.missing;}).map(function(c){return c.m.n;});
+  if(miss.length){var mm=el("div","s");mm.style.cssText="font-size:12.5px;color:var(--ink3);padding:10px 0 12px;line-height:1.45";
+    mm.textContent="Not enough data to compare: "+miss.join(", ")+".";host.appendChild(mm);}
+}
+
+/* ---- log a strength workout by hand ---- */
+var STR_TYPES=[["FunctionalStrengthTraining","Functional Strength"],["TraditionalStrengthTraining","Traditional Strength"],["CoreTraining","Core Training"]];
+function strTypeName(t){for(var i=0;i<STR_TYPES.length;i++)if(STR_TYPES[i][0]===t)return STR_TYPES[i][1];return prettyWorkout(t);}
+function openStrengthLog(ds){
+  openSheet(function(h){
+    sheetTitle(h,"Log strength workout","Counts toward Strength Training in Biological Age right away. When a later export brings in the same workout from your watch, that day counts whichever is longer, not both.");
+    var f=el("form");
+    var dd=el("div","fld");dd.appendChild(el("label",null,"Date"));
+    var di=el("input");di.type="date";di.max=today();di.value=ds||today();dd.appendChild(di);f.appendChild(dd);
+    var td=el("div","fld");td.appendChild(el("label",null,"Type"));
+    var sel=el("select");STR_TYPES.forEach(function(t){var o=el("option",null,t[1]);o.value=t[0];sel.appendChild(o);});td.appendChild(sel);f.appendChild(td);
+    var vd=el("div","fld");vd.appendChild(el("label",null,"Duration"));
+    var w=el("div","sfx"),inp=el("input");inp.type="number";inp.step="1";inp.min="1";inp.setAttribute("inputmode","numeric");inp.placeholder="30";
+    w.appendChild(inp);w.appendChild(el("span",null,"min"));vd.appendChild(w);f.appendChild(vd);
+    var save=el("button","btn wide","Save");save.type="submit";f.appendChild(save);
+    var st=el("div");f.appendChild(st);h.appendChild(f);
+    setTimeout(function(){try{inp.focus();}catch(e){}},250);
+    f.addEventListener("submit",function(ev){
+      ev.preventDefault();
+      var d=di.value||today(),n=Math.round(Number(inp.value));
+      if(!(n>=5&&n<=300)){st.className="stat err";st.textContent="Enter a duration between 5 and 300 minutes.";return;}
+      var ex=entryFor(d),arr=(ex&&ex.strLog?ex.strLog:[]).slice();
+      arr.push({min:n,type:sel.value,id:"s"+Date.now().toString(36)});
+      upsert({date:d,strLog:arr});renderAll();closeSheet();
+      toast(n+" min "+strTypeName(sel.value)+" logged for "+sdate(d));
+    });
+    closeBtn(h);
+  });
+}
+// recent strength sessions, from the watch and from your log
+function strengthSessions(end,days){
+  var out=[];for(var k=0;k<days;k++){var d=addDays(end,-k),e=entryFor(d);if(!e)continue;
+    (e.workouts||[]).forEach(function(x){if(isStrength(x))out.push({date:d,min:x.dur,type:x.type,src:"watch"});});
+    (e.strLog||[]).forEach(function(x){out.push({date:d,min:Number(x.min),type:x.type,src:"log",id:x.id});});}
+  return out;
+}
+function removeStrLog(d,id){var e=entryFor(d);if(!e||!e.strLog)return;
+  upsert({date:d,strLog:e.strLog.filter(function(x){return x.id!==id;})});renderAll();}
 var BIOMARKERS=["weight","bodyFat","hrvBase","rhrBase","vo2max","sleepBase"];
 var BIONAME={weight:"Weight",bodyFat:"Body Fat",hrvBase:"HRV Baselines",rhrBase:"RHR Baselines",vo2max:"VO₂ Max",sleepBase:"Sleep Baselines"};
 function renderBiomarkers(){
@@ -4316,6 +4479,7 @@ function openQuickLog(){
     sheetTitle(h,"Add","Log one thing, or fill in a whole day.");
     menuItem(h,"scale","Weight",function(){openOneLog("weight");});
     menuItem(h,"drop","Body fat",function(){openOneLog("bodyFat");});
+    menuItem(h,"dumbbell","Strength workout",function(){openStrengthLog();});
     menuItem(h,"bed","Full day entry",openLog);
     closeBtn(h);
   });
@@ -4440,7 +4604,7 @@ function openCoach(){
 }
 
 /* ======================= SETTINGS / BACKUP ======================= */
-var APP_BUILD=7,APP_VER="Nov 6 · build 7";
+var APP_BUILD=8,APP_VER="Nov 6 · build 8";
 /* Self-update: phones keep an old copy of this page (Safari tabs, the browser cache). On every open,
    fetch the live file from GitHub, skipping all caches; if it has a newer build number, reload into it.
    Your data lives in this browser's storage, not in the page, so nothing is lost. */
