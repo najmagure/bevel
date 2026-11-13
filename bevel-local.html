@@ -330,6 +330,7 @@
   .hs-ic svg{width:19px;height:19px}
   .hs-b{flex:1;min-width:0}.hs-t{font-size:15.5px;font-weight:600}.hs-s{font-size:13px;color:var(--ink3);margin-top:2px;font-variant-numeric:tabular-nums}
   .hs-y{font-size:14.5px;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .hs-y6{font-size:14px;color:var(--ink3);margin-top:4px;font-variant-numeric:tabular-nums;text-align:right}
   .hs-yrs{font-size:24px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
   .hs-ref{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--card2);border-radius:18px;padding:13px 16px;margin:0 16px 12px;font-size:15px;color:var(--ink3)}
   .hs-ref svg{width:20px;height:20px;flex-shrink:0}.hs-ref b{color:var(--ink);font-weight:650}
@@ -353,15 +354,6 @@
   .hs-chg:last-child{border-bottom:none}
   .hs-ct{font-size:16px;font-weight:600}.hs-cs{font-size:13px;color:var(--ink3);margin-top:3px;font-variant-numeric:tabular-nums}
   .hs-cr{text-align:right;flex-shrink:0}.hs-cw{font-size:15.5px;font-weight:650}
-  .bseg{display:flex;background:var(--seg-bg);border-radius:999px;padding:3px;margin:2px 0 12px}
-  .bseg button{flex:1;border:none;background:none;border-radius:999px;padding:8px 0;font-size:14px;font-weight:600;color:var(--ink3);cursor:pointer;font-family:inherit}
-  .bseg button.on{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.12)}
-  .chg{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--hair)}
-  .chg:last-child{border-bottom:none}
-  .chg .b{flex:1;min-width:0}.chg .t{font-size:15px;font-weight:600}.chg .s{font-size:12.5px;color:var(--ink3);margin-top:2px;line-height:1.45}
-  .chg .r{text-align:right;flex-shrink:0}.chg .w{font-size:14px;font-weight:650}.chg .e{font-size:12px;color:var(--ink3);margin-top:2px;font-variant-numeric:tabular-nums}
-  .chg .big{font-size:17px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-  .ptrail{font-size:13px;color:var(--ink3);margin-top:8px;font-variant-numeric:tabular-nums}
   .chip{border:1px solid var(--hair);background:var(--card2);color:var(--ink2);border-radius:999px;padding:8px 14px;
     font-size:13.5px;cursor:pointer}
   .typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ink3);margin-right:3px;
@@ -1454,7 +1446,7 @@ var EXPLAIN={
     f:"Each 5 minutes gets a score from how far heart rate sat above your 60-day resting heart rate — at your resting rate it reads about <b>21</b>, and <b>75% above</b> it reads 100. <b>Stress Score</b> is the average over the whole window, <b>Sleep Stress</b> the average while asleep, and <b>Non-Activity Stress</b> the average while awake outside workouts. Low is under 30, Med 30–59, High 60 and up. Bevel also reads HRV, which Apple only gives a few times a night, so this works from heart rate alone and lands within about 4 points of your Bevel days."},
   energy:{t:"Energy Bank",s:"A battery for your body. It carries over from yesterday, sleep charges it, and waking hours drain it — faster when you're stressed or training.",
     f:"Each sleep session charges it: about <b>7% an hour</b> of light sleep and <b>15% an hour</b> of Deep or REM sleep, scaled up on mornings you're well recovered and down when you're not. Every waking hour drains about <b>3%</b>, rising to about <b>7.5%</b> when your heart rate says stress is maxed out (hard training counts). It can't go above 100 or below 0."},
-  bioage:{t:"Biological Age",s:"A WHOOP-style biological age: nine everyday metrics from your last 6 months, turned into years older or younger than your actual age.",
+  bioage:{t:"Biological Age",s:"Your biological age: nine everyday metrics from your last 6 months, turned into years older or younger than your actual age.",
     f:"WHOOP doesn't publish its exact formula, so this rebuilds it from their white paper and the studies it cites. WHOOP Age averages nine metrics over 6 months: hours of sleep, sleep consistency, time in heart-rate zones 1–3 and 4–5, strength training time, daily steps, VO₂ max, resting heart rate and lean body mass. Each one is compared with a target for your age and sex. The mortality risk that gap carries in large published studies becomes years: about 10 years per unit of log hazard ratio, since mortality roughly doubles every 7 years of age. Those years are added to your actual age. Metrics without enough data are left out rather than guessed. Steps, workouts and VO₂ max come from your full Health export, so redo it every 1–2 weeks. It's an estimate, not a diagnosis."}
 };
 /* ======================= APPLE HEALTH IMPORT =======================
@@ -1942,6 +1934,25 @@ function syncDailyTotals(p,td,yd){
   if(n){S.entries.sort(function(a,b2){return a.date<b2.date?-1:a.date>b2.date?1:0;});saveE();}
   return n;
 }
+// Workouts from the Shortcut (Find Workouts): start, end and type, e.g. "Functional Strength Training".
+// They're added to the day they started; a full export later replaces them with the exact records.
+function syncWorkouts(p){
+  function L(k){return p[k]?p[k].split(/[\n\r;_]+/).map(function(x){return x.trim();}).filter(Boolean):[];}
+  var S0=L("wkS"),E0=L("wkE"),N0=L("wkN"),by={};
+  for(var i=0;i<Math.min(S0.length,E0.length,N0.length);i++){
+    var a=parseStamp(S0[i]),b=parseStamp(E0[i]);if(!a||!b||b.ms<=a.ms||b.ms-a.ms>12*3600000)continue;
+    var d=dstrN(Math.floor(a.w/86400000)),ty=N0[i].replace(/^HKWorkoutActivityType/,"").replace(/[^A-Za-z]/g,"");
+    (by[d]=by[d]||[]).push({type:ty,dur:Math.round((b.ms-a.ms)/60000*10)/10,sw:Math.floor((a.w%86400000)/60000),src:"shortcut"});
+  }
+  var n=0;
+  Object.keys(by).forEach(function(d){
+    var ex=entryFor(d),old=(ex&&ex.workouts)||[];
+    var keep=old.filter(function(w){return !by[d].some(function(x){return has(w.sw)&&Math.abs(w.sw-x.sw)<=3;});});
+    mergeImported({date:d,workouts:keep.concat(by[d])},["workouts"]);n++;
+  });
+  if(n){S.entries.sort(function(a,b2){return a.date<b2.date?-1:a.date>b2.date?1:0;});saveE();}
+  return n;
+}
 function syncFromPayload(text){
   var p={};
   String(text).split("&").forEach(function(kv){var i=kv.indexOf("=");if(i<0)return;
@@ -1972,7 +1983,7 @@ function syncFromPayload(text){
   var full=[td],hrOnly=[];
   if(earliest<=dnum(yd)*86400000+45*60000)hrOnly.push(yd);
   var r=processRaw(raw,{full:full,hrOnly:hrOnly,sleepFrom:isFinite(earliestMs)?earliestMs+45*60000:null});
-  var nd=syncDailyTotals(p,td,yd);
+  var nd=syncDailyTotals(p,td,yd),nw=syncWorkouts(p);
   S.settings.lastSync=Date.now();saveS();
   return {ok:true,hr:raw.hr.length,sleep:raw.stage.length,days:r.written};
 }
@@ -3478,20 +3489,6 @@ function lerpAge(age,a0,v0,a1,v1){var f=clamp((age-a0)/(a1-a0),0,1);return v0+(v
 function sexOf(){var s=String(S.settings.sex||"").toLowerCase();return s==="male"||s==="female"?s:null;}
 function bySex(f,m){var s=sexOf();return s==="female"?f:s==="male"?m:(f+m)/2;}
 
-/* ---- sleep consistency: how much of tonight's sleep falls at the same clock times as each
-   of the 4 nights before (intersection ÷ union of the sleep intervals), as WHOOP describes it */
-function sleepIv(x,shift){
-  if(!x||!x.sessions)return [];
-  var iv=x.sessions.filter(function(s){return has(s.s)&&has(s.e)&&s.e>s.s;})
-    .map(function(s){return [s.s/60000+shift,s.e/60000+shift];}).sort(function(a,b){return a[0]-b[0];});
-  var out=[];iv.forEach(function(r){if(out.length&&r[0]<=out[out.length-1][1])out[out.length-1][1]=Math.max(out[out.length-1][1],r[1]);else out.push(r.slice());});
-  return out;
-}
-function ivLen(a){var t=0;a.forEach(function(r){t+=r[1]-r[0];});return t;}
-function ivInter(A,B){var i=0,j=0,t=0;
-  while(i<A.length&&j<B.length){var a=Math.max(A[i][0],B[j][0]),b=Math.min(A[i][1],B[j][1]);if(b>a)t+=b-a;
-    if(A[i][1]<B[j][1])i++;else j++;}
-  return t;}
 /* Bevel-style: how steady your bedtime and wake time were over the last 7 nights. For each,
    the typical distance (in minutes) from that week's usual time; every 4 minutes of drift
    costs 1 point. 30 min of drift ≈ 92%, 1 hour ≈ 85%, 2 hours ≈ 70%. Needs 4 of the 7 nights.
@@ -3535,6 +3532,19 @@ function nightLow(e){
 }
 /* ---- awake minutes above a heart rate: from the 5-bpm bands when the day has them,
    otherwise from the %max-HR zones (split evenly inside a zone) */
+// Resting heart rate for Biological Age: the average across your main sleep, which is what
+// Bevel uses with "Entire Sleep" (stricter than the overnight low)
+function sleepAvgHR(e){
+  if(!e)return null;
+  if(has(e.hrSleep))return Number(e.hrSleep);
+  return memo("sa|"+e.date,function(){
+    var p=primaryOf(e);if(!p||!has(p.sw)||!has(p.ew))return null;
+    var dn0=dnum(e.date),eday=dn0-(p.ew>=1080?1:0),sday=p.sd?dnum(p.sd):eday-(p.sw>p.ew?1:0);
+    var a=sday*288+Math.floor(p.sw/5),b=eday*288+Math.floor(p.ew/5),v=[];
+    for(var k=a;k<=b&&k-a<200;k++){var h=hr5At(Math.floor(k/288),k%288);if(h>0)v.push(h);}
+    return v.length>=24?mean(v):null;
+  });
+}
 function minAbove(e,bpm){
   var t=0,i,lo,hi,m;
   if(e.hb&&bpm>=100){
@@ -3555,13 +3565,13 @@ function latestWithin(field,end,days){
 }
 var STRENGTH_RE=/Strength|CoreTraining/;
 function isStrength(w){return w&&STRENGTH_RE.test(String(w.type||""))&&(w.dur||0)>=5;}
-/* Strength minutes for a day: watch workouts from your export, or the ones you logged here,
-   whichever is more. So a logged session isn't counted twice once the export brings in the same one. */
+/* Strength minutes for a day: if your watch recorded a strength workout that day, that's used
+   (it's measured, so it replaces your own estimate). Otherwise the ones you logged here count. */
 function strengthMinDay(e){
   var w=0,l=0;
   if(e){(e.workouts||[]).forEach(function(x){if(isStrength(x))w+=x.dur;});
     (e.strLog||[]).forEach(function(x){l+=Number(x.min)||0;});}
-  return {watch:w,logged:l,min:Math.max(w,l)};
+  return {watch:w,logged:l,min:w>0?w:l};
 }
 // the day before your newest steps reading = the last day your full export covers
 function exportThrough(){
@@ -3578,15 +3588,15 @@ function healthspanMetrics(end,days){
       var ds=dstrN(d),e=entryFor(ds),c=sleepConsistencyDay(ds);if(c!==null)sc.push(c);
       if(!e)continue;
       if(has(e.asleepMin)&&e.asleepMin>=60)sl.push(Number(e.asleepMin));
-      var nl=nightLow(e);if(nl!==null)rh.push(nl);
+      var nl=sleepAvgHR(e);if(nl!==null)rh.push(nl);
       if(has(e.vo2max))vo.push(Number(e.vo2max));
       var sm=strengthMinDay(e);
-      if(d>=dToday){if(sm.logged>0){cov++;strMin+=sm.min;}continue;}   // today isn't over: only a logged workout counts
+      if(d>=dToday){if(sm.min>0){cov++;strMin+=sm.min;}continue;}   // today isn't over: only a strength workout counts
       if(has(e.steps)||sm.logged>0){cov++;if(has(e.steps)&&e.steps>=500)st.push(Number(e.steps));strMin+=sm.min;}
       if(e.hb||e.zoneMin)hrDays.push(e);
     }
     var rhr=rh.length>=Math.round(10*need)?mean(rh):null;
-    var r0=rhr||65,mx=maxHR(),L1=r0+0.4*(mx-r0),L4=r0+0.8*(mx-r0),z13=0,z45=0;
+    var r0=rhr||65,mx=maxHR(),L1=0.6*mx,L4=0.8*mx,z13=0,z45=0;   // Bevel's default zones: % of max HR
     hrDays.forEach(function(e){var a1=minAbove(e,L1),a4=minAbove(e,L4);z13+=Math.max(0,a1-a4);z45+=a4;});
     var out={end:end,days:days,L1:L1,L4:L4,mx:mx,r0:r0};
     function put(k,v,n,ok){out[k]=ok?{v:v,n:n}:null;}
@@ -3627,15 +3637,15 @@ var HSM=[
     yrs:function(v){return capY(v<70?0.09*(70-v):-0.04*(v-70),-1,3);},
     how:"Each day looks back 7 nights at your main sleep. For bedtime and for wake time, it takes how far each night typically sat from that week's usual time. Every 4 minutes of drift costs 1 point: 30 minutes ≈ 92%, an hour ≈ 85%, two hours ≈ 70%. Each point under 70% adds 0.09 years, up to 3. Each point over 70% takes off 0.04 years, up to 1. Source: Windred et al., 2024 (UK Biobank), where regular sleep timing predicted mortality better than sleep length.",
     tip:"Keep your wake-up time within about 30 minutes every day, weekends included."},
-  {k:"z13",g:"Activity",n:"Time in HR Zones 1–3",i:"heart",
-    s:"Weekly minutes at light-to-moderate effort: 40–80% of your heart-rate reserve.",
+  {k:"z13",g:"Activity",n:"Zones 2–3",i:"heart",
+    s:"Weekly minutes at moderate effort: 60–80% of your max heart rate (Bevel's zones 2–3).",
     tgt:function(a){return lerpAge(a,20,100,70,70);},tgtTxt:function(a){return Math.round(lerpAge(a,20,100,70,70))+"+ min/wk";},
     fmt:function(v){return fmtWk(v);},
     yrs:function(v,T){return 7*(v<T?0.22*(1-v/T):-0.08*Math.min(1,(v-T)/(2*T)));},
-    how:"Heart-rate reserve is your max heart rate minus your resting heart rate, which is how WHOOP sets its zones. Zones 1–3 are 40–80% of it. Doing none adds about 1.5 years. Beyond the target, up to 0.6 years come off. Sources: Lee et al., 2022 and Ahmadi et al., 2022.",
+    how:"Zones are set from your max heart rate, the way Bevel does by default: zone 2 starts at 60% of it and zone 4 at 80%. Every awake minute in that range counts, workout or not. Doing none adds about 1.5 years. Beyond the target, up to 0.6 years come off. Sources: Lee et al., 2022 and Ahmadi et al., 2022.",
     tip:"Brisk walks count. Three 35-minute walks a week covers it."},
-  {k:"z45",g:"Activity",n:"Time in HR Zones 4–5",i:"bolt",
-    s:"Weekly minutes of hard effort: above 80% of your heart-rate reserve.",
+  {k:"z45",g:"Activity",n:"Zones 4–5",i:"bolt",
+    s:"Weekly minutes of hard effort: above 80% of your max heart rate (Bevel's zones 4–5).",
     tgt:function(a){return lerpAge(a,20,10,70,7);},tgtTxt:function(a){return Math.round(lerpAge(a,20,10,70,7))+"+ min/wk";},
     fmt:function(v){return fmtWk(v);},
     yrs:function(v,T){return 7*(v<T?0.16*(1-v/T):-0.25*Math.min(1,(v-T)/45));},
@@ -3663,11 +3673,11 @@ var HSM=[
     how:"Each 1 ml/kg/min below the target for your age and sex adds about 0.4 years, from 13% higher mortality per MET (3.5 ml/kg/min). Above the target, years come off at the same rate. Capped at ±8 years. Sources: Kodama et al., 2009 and Mandsager et al., 2018. Targets are around the 60th percentile of the FRIEND registry.",
     tip:"VO₂ max responds best to 2–3 hard interval sessions a week. Outdoor walks with your watch also give it fresh readings."},
   {k:"rhr",g:"Fitness",n:"Resting Heart Rate",i:"heart",
-    s:"Your overnight low heart rate: the 10th percentile of your heart rate across your main sleep.",
+    s:"Your average heart rate across your main sleep, the way Bevel measures it.",
     tgt:function(){return bySex(64,60);},tgtTxt:function(){return "under "+Math.round(bySex(64,60));},
     fmt:function(v){return Math.round(v)+" bpm";},
     yrs:function(v,T){return capY(10*0.8*0.012*(v-T),-3,3);},
-    how:"Each beat above the target adds about 0.1 years, and each beat below it takes off the same, capped at ±3 years. Sources: Zhang et al., 2016 and Aune et al., 2017 (about 9–17% higher mortality per 10 bpm). WHOOP measures it during sleep, so it isn't the same as Apple Health's daytime resting heart rate.",
+    how:"Each beat above the target adds about 0.1 years, and each beat below it takes off the same, capped at ±3 years. Sources: Zhang et al., 2016 and Aune et al., 2017 (about 9–17% higher mortality per 10 bpm). It's averaged across your whole sleep like Bevel's, so it reads higher than Apple Health's resting heart rate.",
     tip:"Aerobic fitness, less alcohol, and not eating or training hard late all bring it down."},
   {k:"lean",g:"Fitness",n:"Lean Body Mass %",i:"drop",
     s:"100 minus your body fat %, from your latest reading in the last 12 months.",
@@ -3684,12 +3694,20 @@ function fmtWk(v){return v>=60?hm(v)+"/wk":Math.round(v)+" min/wk";}
 function bioEnd(){
   var d=viewDateStr();if(S.viewDate)return d;
   for(var i=S.entries.length-1;i>=0;i--){var e=S.entries[i];if(e.date<=d)break;
-    if(e.date<=today()&&e.strLog&&e.strLog.length)return e.date;}
+    if(e.date<=today()&&strengthMinDay(e).min>0)return e.date;}
   return d;
 }
 function whoopAge(end){
   end=end||bioEnd();
   return memo("wa|"+end,function(){
+    var w=whoopAgeRaw(end);if(!w||!has(w.paceRaw))return w;
+    var p=whoopAgeRaw(addDays(end,-7)),pr=p&&has(p.paceRaw)?(w.paceRaw+p.paceRaw)/2:w.paceRaw;
+    return Object.assign({},w,{pace:clamp(pr,-1,3)});
+  });
+}
+// Pace of Aging is smoothed: the average of this week's and last week's reading, so one odd week moves it half as much
+function whoopAgeRaw(end){
+  return memo("war|"+end,function(){
     var age=ageOn(end);if(age===null)return {needsAge:true};
     var a=healthspanMetrics(end,182),b=healthspanMetrics(end,30),d6=0,d30=0,n=0;
     var rows=HSM.map(function(m){
@@ -3697,9 +3715,10 @@ function whoopAge(end){
       if(x){r.years=m.yrs(x.v,T);r.years30=m.yrs(y.v,T);d6+=r.years;d30+=r.years30;n++;}
       return r;});
     if(n<4)return {notEnough:true,age:age,rows:rows,n:n};
-    return {value:age+d6,age:age,delta:d6,delta30:d30,pace:clamp(1+2*(d30-d6),-1,3),rows:rows,n:n,end:end,win:a};
+    return {value:age+d6,age:age,delta:d6,delta30:d30,paceRaw:1+2*(d30-d6),pace:clamp(1+2*(d30-d6),-1,3),rows:rows,n:n,end:end,win:a};
   });
 }
+function fmtPace(p){return (Math.abs(p)<0.05?0:p).toFixed(1);}
 function paceWord(p){return p<0.9?"slower than normal":p>1.1?"faster than normal":"about normal";}
 function paceColor(p){return p<0.9?"var(--recovery)":p>1.1?"var(--warn)":"var(--ink2)";}
 function yrsText(y){return Math.abs(y)<0.05?"±0.0 yrs":(y>0?"+":"−")+Math.abs(y).toFixed(1)+" yrs";}
@@ -3728,7 +3747,7 @@ function renderBio(){
     if(b&&b.needsAge){var lk=el("button","btn sec sm","Add date of birth");lk.addEventListener("click",openSettings);mid.appendChild(lk);}
     return;
   }
-  $("bioAsOf").textContent="WHOOP-style · last 6 months to "+sdate(b.end);
+  $("bioAsOf").textContent="Last 6 months to "+sdate(b.end);
   var lo=Math.max(0,Math.floor(Math.min(b.age-10,b.value-3))),hi=Math.ceil(Math.max(b.age+15,b.value+3)),
       frc=clamp((b.value-lo)/(hi-lo),0.02,1),mk=A0-(A0-A1)*frc,ak=A0-(A0-A1)*clamp((b.age-lo)/(hi-lo),0,1);
   var good=b.value<=b.age,col=good?"var(--recovery)":"var(--strain)";
@@ -3752,8 +3771,8 @@ function renderBio(){
   // two tiles: Pace of Aging, and how the age moved this week
   var wk=whoopAge(addDays(b.end,-7)),tl=el("div","bio-tiles");
   var t1=el("button","bio-tile");t1.type="button";t1.appendChild(el("div","l","Pace of Aging"));
-  var v1=el("div","v",b.pace.toFixed(1)+"x");v1.style.color=paceColor(b.pace);t1.appendChild(v1);
-  t1.appendChild(el("div","s",wk&&has(wk.pace)?"was "+wk.pace.toFixed(1)+"x last week":paceWord(b.pace)));
+  var v1=el("div","v",fmtPace(b.pace)+"x");v1.style.color=paceColor(b.pace);t1.appendChild(v1);
+  t1.appendChild(el("div","s",wk&&has(wk.pace)?"was "+fmtPace(wk.pace)+"x last week":paceWord(b.pace)));
   t1.addEventListener("click",openPaceSheet);tl.appendChild(t1);
   var t2=el("button","bio-tile");t2.type="button";t2.appendChild(el("div","l","This week"));
   if(wk&&has(wk.value)){var dv=b.value-wk.value,v2=el("div","v",yrsText(dv));v2.style.color=yrsColor(dv);t2.appendChild(v2);
@@ -3794,7 +3813,7 @@ function renderBio(){
 function openPaceSheet(){
   var b=whoopAge();if(!b||!has(b.pace))return;
   openSheet(function(h){
-    sheetTitle(h,"Pace of Aging · "+b.pace.toFixed(1)+"x","Your last 30 days against your last 6 months: "+paceWord(b.pace)+".");
+    sheetTitle(h,"Pace of Aging · "+fmtPace(b.pace)+"x","Your last 30 days against your last 6 months: "+paceWord(b.pace)+".");
     var kv=el("div","kv");
     [["Last 6 months",yrsText(b.delta)],["Last 30 days",yrsText(b.delta30)]].forEach(function(p){
       var r=el("div","r");r.appendChild(el("div","k",p[0]));r.appendChild(el("div","v",p[1]));kv.appendChild(r);});
@@ -3805,7 +3824,7 @@ function openPaceSheet(){
       var kh=el("div","kv");
       hist.slice().reverse().forEach(function(w,i,arr){var r=el("div","r");
         r.appendChild(el("div","k",i===0?"This week":sdate(w.date)));
-        var nx=arr[i+1],v=el("div","v",w.pace.toFixed(1)+"x · "+w.value.toFixed(1)+" yrs");
+        var nx=arr[i+1],v=el("div","v",fmtPace(w.pace)+"x · "+w.value.toFixed(1)+" yrs");
         if(nx){var dd=w.pace-nx.pace;v.appendChild(Object.assign(el("span",null," ("+paceDeltaTxt(dd)+")"),{}));
           v.lastChild.style.color=dd<-0.05?"var(--recovery)":dd>0.05?"var(--warn)":"var(--ink3)";v.lastChild.style.fontWeight="500";}
         r.appendChild(v);kh.appendChild(r);});
@@ -3818,7 +3837,7 @@ function openPaceSheet(){
       var v=el("div","v",yrsText(c.d));v.style.color=yrsColor(c.d);r.appendChild(v);kv2.appendChild(r);});
     h.appendChild(kv2);
     var f=el("div","fml");f.innerHTML="<b>How it's worked out.</b> If you kept your last 30 days' habits, your 6-month numbers would drift toward them over the next half-year. "+
-      "Pace = (0.5 + change in years) ÷ 0.5, so 1.0x means aging one year per year, 2.0x means two, and below 0 means getting younger. WHOOP shows it from −1x to 3x, and so does this.";
+      "Pace = (0.5 + change in years) ÷ 0.5, so 1.0x means aging one year per year, 2.0x means two, and below 0 means getting younger. It's averaged with last week's reading so one unusual week doesn't swing it, and shown from −1x to 3x.";
     h.appendChild(f);closeBtn(h);
   });
 }
@@ -3855,7 +3874,7 @@ var HSI={
     fast:"Your score can move within 1–2 weeks. The health benefit comes from keeping it regular over time."},
   z13:{g:[0,300],cap:"Weekly average over the last 28 days.",
     big:function(v){return [hsMin(v),""];},ax:function(v){return hsMin(v);},bd:function(v){return Math.round(v)+"m/week";},
-    what:"Moderate effort where your heart rate is up but you can still talk: 40–80% of your heart-rate reserve.",
+    what:"Moderate effort where your heart rate is up but you can still talk: 60–80% of your max heart rate.",
     imp:"Regular moderate aerobic activity is strongly tied to better heart and metabolic health. The biggest drop in risk comes from going from little activity to about 150 minutes a week, with smaller gains past 300.",
     how:[["steps","Walk briskly","A brisk walk counts as long as your heart rate is up."],
       ["timer","Make it a routine","Three or four 30–40 minute sessions a week covers it."],
@@ -3864,7 +3883,7 @@ var HSI={
     fast:"Minutes count straight away. Fitness gains show after 4–8 weeks."},
   z45:{g:[0,60],cap:"Weekly average over the last 28 days.",
     big:function(v){return [hsMin(v),""];},ax:function(v){return hsMin(v);},bd:function(v){return Math.round(v)+"m/week";},
-    what:"Hard effort near your maximum, where talking is difficult: above 80% of your heart-rate reserve.",
+    what:"Hard effort near your maximum, where talking is difficult: above 80% of your max heart rate.",
     imp:"Vigorous minutes carry roughly twice the benefit of moderate ones. Most of the gain comes in the first 40–75 minutes a week, with smaller gains after that.",
     how:[["bolt","Add intervals","A few 1–3 minute hard efforts with easy recovery in between."],
       ["steps","Use hills and stairs","They push your heart rate up quickly."],
@@ -3899,9 +3918,9 @@ var HSI={
       ["timer","Make it weekly","Regular sessions beat occasional all-out efforts."],
       ["moon","Prioritize recovery","Sleep and rest let the adaptations happen."]],
     fast:"It can improve within 4–6 weeks of structured aerobic training, with gains for months if you keep going."},
-  rhr:{g:[40,100],cap:"Nightly low, averaged over the last 28 days.",
+  rhr:{g:[40,100],cap:"Average across your sleep, over the last 28 days.",
     big:function(v){return [v.toFixed(1)," bpm"];},ax:function(v){return v.toFixed(1);},bd:function(v){return v.toFixed(1);},
-    what:"Your heart rate at its lowest and steadiest while you sleep. It shows how hard your heart works when your body is at rest.",
+    what:"Your average heart rate while you sleep. It shows how hard your heart works when your body is at rest.",
     imp:"A lower resting heart rate goes with longer life and usually means a fitter, more efficient heart. Risk rises noticeably at higher levels.",
     how:[["steps","Build aerobic fitness","Regular cardio is one of the best ways to lower it over time."],
       ["gauge","Manage stress","Breathing exercises and downtime ease sustained highs."],
@@ -4014,16 +4033,18 @@ function renderHsMetric(){
   var cls=rw.x?hsCls(rw.years):"stable",col=HS_COL[cls];
 
   // the number and the years it adds
-  var top=el("div","tv-top"),L=el("div"),val=el("div","tv-val"),dt=el("div","tv-date"),R=el("div","tv-r"),yr=el("div","hs-yrs");
-  L.appendChild(val);L.appendChild(dt);R.appendChild(yr);top.appendChild(L);top.appendChild(R);host.appendChild(top);
+  var top=el("div","tv-top"),L=el("div"),val=el("div","tv-val"),dt=el("div","tv-date"),R=el("div","tv-r"),yr=el("div","hs-yrs"),y6=el("div","hs-y6");
+  L.appendChild(val);L.appendChild(dt);R.appendChild(yr);R.appendChild(y6);top.appendChild(L);top.appendChild(R);host.appendChild(top);
+  // right side: the years this metric adds to your age, which comes from your 6-month average
+  if(rw.x){yr.textContent=(Math.abs(rw.years)<0.05?"±0.0":(rw.years>0?"+":"−")+Math.abs(rw.years).toFixed(1))+" years";yr.style.color=HS_COL[cls];
+    var b6=I.big(rw.x.v);y6.textContent="6-month avg "+b6[0]+b6[1];}
   function show(v,label){
-    val.innerHTML="";
-    if(v===null||v===undefined){val.textContent="—";val.style.color="var(--ink4)";dt.textContent=label;yr.textContent="";return;}
+    val.innerHTML="";dt.textContent=label;
+    if(v===null||v===undefined){val.textContent="—";val.style.color="var(--ink4)";return;}
     val.style.color="";var bg=I.big(v);val.appendChild(document.createTextNode(bg[0]));if(bg[1])val.appendChild(el("span","u",bg[1]));
-    dt.textContent=label;var y=m.yrs(v,rw.T);yr.textContent=(Math.abs(y)<0.05?"±0.0":(y>0?"+":"−")+Math.abs(y).toFixed(1))+" years";
-    yr.style.color=HS_COL[hsCls(y)];
   }
-  var def6=rw.x?rw.x.v:null,defLab="6-month average · "+dshort(b.end);
+  var ser0=hsSeries(k,b.end,HS_WEEKS),lastV=ser0[ser0.length-1].v;
+  var def6=lastV!==null?lastV:rw.x?rw.x.v:null,defLab=lastV!==null?"28-day average · "+dshort(b.end):"6-month average · "+dshort(b.end);
   show(def6,defLab);
 
   // the other metrics in this group
@@ -4035,7 +4056,7 @@ function renderHsMetric(){
   setTimeout(function(){var on=pr.querySelector(".on");if(on)pr.scrollLeft=on.offsetLeft-(pr.clientWidth-on.offsetWidth)/2;},0);
 
   // the chart
-  var ser=hsSeries(k,b.end,HS_WEEKS),pts=ser.filter(function(p){return p.v!==null;});
+  var ser=ser0,pts=ser.filter(function(p){return p.v!==null;});
   var chd=el("div","tv-chart");host.appendChild(chd);
   if(pts.length>=2)drawHsChart(chd,ser,I,col,function(p){if(!p)show(def6,defLab);else show(p.v,"28 days to "+dlong(p.date));},k);
   else chd.appendChild(el("div","empty","Not enough "+m.n+" data in this period."));
@@ -4054,7 +4075,7 @@ function renderHsMetric(){
   // lower part
   var low=el("div","tv-low");host.appendChild(low);
   var ivs=hsBands(m,rw.T,I.g);
-  low.appendChild(hsGauge(m,I,ivs,def6,cls,std));
+  low.appendChild(hsGauge(m,I,ivs,rw.x?rw.x.v:null,cls,std));
 
   // what changed
   var wk=whoopAge(addDays(b.end,-7)),mo=whoopAge(addDays(b.end,-28));
@@ -4090,7 +4111,7 @@ function renderHsMetric(){
     low.appendChild(sc);
     var lb=el("button","btn wide","Log a strength workout");lb.addEventListener("click",function(){openStrengthLog();});low.appendChild(lb);
     var nt=el("div","hs-cap");nt.style.margin="10px 4px 22px";
-    nt.textContent="Watch workouts arrive with a full Health export. The Shortcut refresh doesn't carry workouts, so log today's session here or wait for your next export.";
+    nt.textContent="Watch workouts arrive with a full Health export, or with the Shortcut once you add the workouts step to it (menu → Refresh automatically). Until then, log today's session here.";
     low.appendChild(nt);
   }
   if(k==="lean"){var ab=el("button","btn wide","Add body fat %");ab.style.marginBottom="22px";ab.addEventListener("click",function(){openOneLog("bodyFat");});low.appendChild(ab);}
@@ -4099,7 +4120,8 @@ function renderHsMetric(){
   var def=el("div","tv-def");host.appendChild(def);
   def.appendChild(el("div","hs-h",(k==="z13"||k==="z45"?"What are ":"What is ")+m.n+"?"));
   var wc=el("div","hs-card");
-  wc.appendChild(el("div","hs-p",I.what));
+  var w0=b.win;
+  wc.appendChild(el("div","hs-p",I.what+(k==="z13"&&w0?" For you that's "+Math.round(w0.L1)+"–"+Math.round(w0.L4)+" bpm.":k==="z45"&&w0?" For you that's above "+Math.round(w0.L4)+" bpm.":"")));
   wc.appendChild(el("div","hs-sub","Impact on Health"));wc.appendChild(el("div","hs-p",I.imp));
   wc.appendChild(el("div","hs-sub","Ranges for "+std));
   [["young",ICO2.arD],["stable",'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M7 12h10"/></svg>'],["old",ICO2.arU]].forEach(function(o){
@@ -4189,7 +4211,7 @@ var STR_TYPES=[["FunctionalStrengthTraining","Functional Strength"],["Traditiona
 function strTypeName(t){for(var i=0;i<STR_TYPES.length;i++)if(STR_TYPES[i][0]===t)return STR_TYPES[i][1];return prettyWorkout(t);}
 function openStrengthLog(ds){
   openSheet(function(h){
-    sheetTitle(h,"Log strength workout","Counts toward Strength Training in Biological Age right away. When a later export brings in the same workout from your watch, that day counts whichever is longer, not both.");
+    sheetTitle(h,"Log strength workout","Counts toward Strength Training in Biological Age right away. If your watch recorded a strength workout that day, the watch's measured time replaces this once it arrives.");
     var f=el("form");
     var dd=el("div","fld");dd.appendChild(el("label",null,"Date"));
     var di=el("input");di.type="date";di.max=today();di.value=ds||today();dd.appendChild(di);f.appendChild(dd);
@@ -4650,7 +4672,8 @@ function shortcutSheet(){
       "Add <b>Combine Text</b>. For its input, tap the <b>Health Samples</b> variable → choose <b>Start Date</b> → <b>Date Format: Custom</b> → type <b>yyMMddHHmmss</b>. Set the separator to <b>Custom</b> and type <b>_</b> (underscore).",
       "Add another <b>Combine Text</b>: same Health Samples, but choose <b>Value</b>. Separator <b>_</b>.",
       "Repeat steps 2–4 for <b>Sleep Analysis</b> — with one more Combine Text for <b>End Date</b> (same custom format) — then for <b>Respiratory Rate</b> and <b>Heart Rate Variability</b>.",
-      "Add a <b>Text</b> action and type the line below, putting each Combine Text result in its place:<div class=\"codebox\" style=\"margin-top:8px\">hrT=[HR start]&amp;hrV=[HR value]&amp;slS=[sleep start]&amp;slE=[sleep end]&amp;slV=[sleep value]&amp;rrT=[RR start]&amp;rrV=[RR value]&amp;hvT=[HRV start]&amp;hvV=[HRV value]</div>",
+      "<b>Workouts (so strength sessions show up the same day):</b> add <b>Find Workouts</b> with the filter <b>Start Date · is in the last · 2 days</b>. Add three <b>Combine Text</b> actions on those Workouts, separator <b>_</b>: <b>Start Date</b> and <b>End Date</b> (both Custom format <b>yyMMddHHmmss</b>), and <b>Type</b>.",
+      "Add a <b>Text</b> action and type the line below, putting each Combine Text result in its place:<div class=\"codebox\" style=\"margin-top:8px\">hrT=[HR start]&amp;hrV=[HR value]&amp;slS=[sleep start]&amp;slE=[sleep end]&amp;slV=[sleep value]&amp;rrT=[RR start]&amp;rrV=[RR value]&amp;hvT=[HRV start]&amp;hvV=[HRV value]&amp;wkS=[workout start]&amp;wkE=[workout end]&amp;wkN=[workout type]</div><div style=\"margin-top:6px\">Already have the Shortcut? Just add the Find Workouts step and paste <b>&amp;wkS=…&amp;wkE=…&amp;wkN=…</b> onto the end of your Text.</div>",
       "Add <b>URL Encode</b> (Encode) on that Text.",
       "Add another <b>Text</b>: paste the link below, then put the <b>URL Encoded Text</b> variable right after <b>#bl=</b>.",
       "Add <b>Open URLs</b>. Run it once and allow access to Health when asked."]);
@@ -4663,7 +4686,7 @@ function shortcutSheet(){
     section((online?"3":"4")+" · Make it automatic",[
       "Tap the Shortcut's share button → <b>Add to Home Screen</b>. Open Bevel from this icon — it refreshes every time.",
       "In Shortcuts → <b>Automation</b> → <b>+</b> → <b>Sleep</b> → <b>Waking Up</b> → <b>Run Immediately</b> → run <b>Bevel</b>. (No sleep schedule? Use <b>Time of Day</b> instead.)"],
-      "<b>Accuracy.</b> Strain, Sleep, Stress, Energy, resting heart rate and breathing come out the same as from a full export. HRV can't: Shortcuts only get Apple's own HRV number, not the heartbeat data behind it, so Recovery on refreshed days is about 5 points less precise. A full export every week or two makes those days exact again. Steps, energy and workouts also only update with a full export.");
+      "<b>Accuracy.</b> Strain, Sleep, Stress, Energy, resting heart rate and breathing come out the same as from a full export. HRV can't: Shortcuts only get Apple's own HRV number, not the heartbeat data behind it, so Recovery on refreshed days is about 5 points less precise. A full export every week or two makes those days exact again, and replaces any workouts the Shortcut sent with the exact records.");
     closeBtn(h);
   });
 }
@@ -4976,6 +4999,7 @@ function openBackup(){
       var url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}));
       var a=el("a");a.href=url;a.download="bevel-local-"+today()+".json";
       document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+      S.settings.lastBackup=new Date().toISOString();saveS();var nag=$("bkNag");if(nag)nag.remove();
       var s=$("bkStat");s.className="stat ok";s.textContent="Backup downloaded.";});
     var im=el("button","btn sec","Restore backup");im.style.flex="1";
     var fi=el("input");fi.type="file";fi.accept="application/json,.json";fi.style.display="none";
@@ -5033,7 +5057,23 @@ function go(tab){
   window.scrollTo({top:0});
 }
 $("tabs").addEventListener("click",function(e){var b=e.target.closest("button[data-tab]");if(b)go(b.dataset.tab);});
-function renderAll(){bust();renderHome();if(S.tab==="bio"){renderBio();renderBiomarkers();}if(HSV)renderHsMetric();}
+// a nudge on Home when your last backup is over 2 weeks old (your data only lives in this browser)
+function backupNag(){
+  var old=$("bkNag");if(old)old.remove();
+  if(S.entries.length<14)return;
+  var lb=S.settings.lastBackup?new Date(S.settings.lastBackup):null,ago=lb?Math.floor((Date.now()-lb)/86400000):null;
+  if(ago!==null&&ago<14)return;
+  if(S.settings.nagSnooze&&S.settings.nagSnooze>today())return;
+  var c=el("div","card");c.id="bkNag";c.style.cssText="display:flex;align-items:center;gap:12px;padding:13px 15px";
+  var tx=el("div");tx.style.flex="1";tx.appendChild(el("div",null,"Back up your data"));tx.firstChild.style.cssText="font-weight:650;font-size:15px";
+  var sub=el("div",null,(ago===null?"No backup yet.":"Last backup "+ago+" days ago.")+" It only lives in this browser.");sub.style.cssText="font-size:13px;color:var(--ink3);margin-top:2px";
+  tx.appendChild(sub);c.appendChild(tx);
+  var go2=el("button","btn sm","Back up");go2.addEventListener("click",openBackup);c.appendChild(go2);
+  var x=el("button",null,"×");x.setAttribute("aria-label","Remind me later");x.style.cssText="border:none;background:none;color:var(--ink3);font-size:22px;cursor:pointer;padding:0 2px";
+  x.addEventListener("click",function(){S.settings.nagSnooze=addDays(today(),3);saveS();c.remove();});c.appendChild(x);
+  var home=$("s-home");home.insertBefore(c,home.firstChild);
+}
+function renderAll(){bust();renderHome();backupNag();if(S.tab==="bio"){renderBio();renderBiomarkers();}if(HSV)renderHsMetric();}
 
 try{
   var ic=$("appIcon").getAttribute("href");
